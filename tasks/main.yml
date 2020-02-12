@@ -1,0 +1,17 @@
+---
+- name: ETCD | Importing bootstrap os task
+  import_tasks: "bootstrap_system.yml"
+  tags:
+    - bootstrap
+
+# Импортируем задание развертывания в зависимости от указанного типа (native или container)
+- name: ETCD | Importing ETCD installation task
+  import_tasks: "install_{{ etcd_distribution_type }}.yml"
+  tags:
+    - install
+
+# Импортируем задание конфигурирования в зависимости от указанного типа (native или container)
+- name: ETCD | Importing ETCD configuration task
+  import_tasks: "configure_{{ etcd_distribution_type }}.yml"
+  tags:
+    - configure

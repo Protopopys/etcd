@@ -1,0 +1,98 @@
+---
+# Вкл/Выкл использование downloader сервера (актуально если на удаленном хосте нет доступа к сети интернет или же количество хостов на которые необходимо доставить файлы
+use_downloader: true
+# Машина через которую осуществляется выкачивание файлов из сети интернет
+downloader: localhost
+# При использовании downloader в данную папку будет осуществлятся скачивание файлов, в дальнейшем распространение файлов на удаленные хосты осуществляется из данной папки downloader сервера.
+downloader_source_folder: ~/DISTR
+# Папка в которую будет осуществлена загрузка установочного архива
+distribution_path: "/opt/DISTR"
+
+# Устаноавливаемая версия
+#etcd_version: v3.3.17
+etcd_version: v3.4.3
+# Папка на удаленном сервере куда будет осуществляться доставка архива с дальнейшей распаковкой
+etcd_destination_path: "/opt/etcd/{{ etcd_version }}"
+
+# Тип установки:
+## native - бинарник в хост системе
+## container - бинарник в контейнере
+etcd_distribution_type: native
+
+ca_certificates_key_size: 4096
+certificates_key_size: 2048
+ca_certificates_duration: 87600h
+certificates_duration: 26280h
+#
+
+#cert_provider: cfssl
+cert_provider: ssl
+
+# Параметры создания пользователя
+etcd_manage_user: true
+etcd_user: etcd
+etcd_group: etcd
+etcd_system: true
+etcd_shell: /bin/false
+etcd_ssh_key: false
+
+# Папка для конфигурационных файлов
+etcd_conf_dir: /etc/etcd
+# Папка для сертификатов
+etcd_cert_dir: "{{ etcd_config_dir }}/pki"
+# Папка для данных
+etcd_data_dir: /var/lib/etcd
+
+etcd:
+  v3.3.17:
+    source_url: https://github.com/etcd-io/etcd/releases/download/v3.3.17/etcd-v3.3.17-linux-amd64.tar.gz
+    # Контрольная сумма скачаемого архива
+    checksum_algorithm: "sha256"
+    archive_checksum: 8c1168a24d17a2d6772f8148ea35d4f3398c51f1e23db90c849d506adb387060
+    # Контрольная сумма бинарных файлов
+    etcd:
+      checksum: bcaeca5a37668909ec9c6f3144cbdecf9e9ae308d6f3d2b0114d1ce79a890f26
+    etcdctl:
+      checksum: dd0ac971beefb8bc2b655b78851b08a9a5b717ca87ca20540237c4d17fa385d0
+      # Параметр распаковки архива на удаленном сервере
+    extra_opts: --strip-components=1
+  v3.4.3:
+    source_url: https://github.com/etcd-io/etcd/releases/download/v3.4.3/etcd-v3.4.3-linux-amd64.tar.gz
+    # Контрольная сумма скачаемого архива
+    checksum_algorithm: "sha256"
+    archive_checksum: 6c642b723a86941b99753dff6c00b26d3b033209b15ee33325dc8e7f4cd68f07
+    # Контрольная сумма бинарных файлов
+    etcd:
+      checksum: f0fc58ad6e4857ddbc42f97fff42ddcfad9b63e1d3a39d47c56f17d7786c60ac
+    etcdctl:
+      checksum: 7bf7dd410c6b69d3cfacd8b8aed2d9e0133dcc97959a41d2c347fc5f5df6c387
+    # Параметр распаковки архива на удаленном сервере
+    extra_opts: --strip-components=1
+
+# TODO добавить описание параметров - https://etcd.io/docs/v3.4.0/op-guide/configuration/
+
+etcd_peer_addresses: |-
+  {% for item in groups['etcd'] -%}
+    {{ hostvars[item].inventory_hostname }}=https://{{ hostvars[item].ip | default(hostvars[item].ansible_host) }}:2380{% if not loop.last %},{% endif %}
+  {%- endfor %}
+
+etcd_metrics: "basic"
+
+## A dictionary of extra environment variables to add to etcd.env, formatted like:
+##  etcd_extra_vars:
+##    ETCD_VAR1: "value1"
+##    ETCD_VAR2: "value2"
+etcd_extra_vars: {}
+
+## Etcd has a default of 2G for its space quota. If you put a value in etcd_memory_limit which is less than
+## etcd_quota_backend_bytes, you may encounter out of memory terminations of the etcd cluster. Please check
+## etcd documentation for more information.
+# etcd_quota_backend_bytes: "2G"
+
+etcd_compaction_retention: "8"
+etcd_peer_client_auth: true
+etcd_secure_client: true
+etcd_heartbeat_interval: "250"
+etcd_election_timeout: "5000"
+etcd_snapshot_count: "10000"
+etcd_access_addresses: http://127.0.0.1:2379

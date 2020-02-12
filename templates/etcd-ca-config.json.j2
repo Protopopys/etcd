@@ -1,0 +1,39 @@
+{
+    "signing": {
+        "default": {
+            "usages": ["signing", "key encipherment", "server auth", "client auth"],
+            "expiry": "{{ certificates_duration }}"
+        },
+        "profiles": {
+            "server": {
+                "expiry": "{{ certificates_duration }}",
+                "usages": [
+                    "signing",
+                    "digital signature",
+                    "key encipherment",
+                    "server auth",
+                    "client auth"
+                ]
+            },
+            "client": {
+                "expiry": "{{ certificates_duration }}",
+                "usages": [
+                    "signing",
+                    "digital signature",
+                    "key encipherment",
+                    "client auth"
+                ] 
+            },
+            "peer": {
+                "expiry": "{{ certificates_duration }}",
+                "usages": [
+                    "signing",
+                    "digital signature",
+                    "key encipherment",
+                    "server auth",
+                    "client auth"
+                ]
+            }
+        }
+    }
+}

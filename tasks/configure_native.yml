@@ -1,0 +1,87 @@
+---
+# Создаем директории необходимые для работы
+- name: ETCD | Creating folders
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"
+    mode: u+rwx
+  loop:
+    - "{{ etcd_conf_dir }}"
+    - "{{ etcd_cert_dir }}"
+    - "{{ etcd_data_dir }}"
+
+- name: ETCD | Set facts to false
+  set_fact:
+    etcd_ca_changed: false
+    etcd_certs_changed: false
+
+- name: ETCD | Generate ETCD CA certs
+  import_tasks: "generate_ca_certs.yml"
+  delegate_to: "{{ groups['etcd'][0] }}"
+  run_once: true
+
+- name: ETCD | Synchronize ETCD CA certs
+  import_tasks: "synchronize_ca_certs.yml"
+
+- name: ETCD | Generate server certs
+  import_tasks: "generate_server_certs.yml"
+
+- name: ETCD | Generate peer certs
+  import_tasks: "generate_peer_certs.yml"
+
+- name: ETCD | Generate helthcheck certs
+  import_tasks: "generate_helthcheck_certs.yml"
+
+# Создаем конфигурационный файл ETCD
+- name: ETCD | Creating etcd.env file
+  template:
+    src: "etcd.env.j2"
+    dest: "{{ etcd_conf_dir }}/etcd.env"
+    owner: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"    
+    backup: true
+  register: etcd_env_file
+
+# Создаем конфигурационный файл systemd сервиса ETCD
+- name: ETCD | Creating etcd.service file
+  template:
+    src: "etcd_{{ etcd_distribution_type }}.service.j2"
+    dest: /etc/systemd/system/etcd.service
+    owner: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"
+    backup: true
+  register: etcd_systemd_file
+
+# Перечитываем конфигурацию systemd
+# Если:
+## Конфигурационный файл systemd был изменен
+- name: ETCD | Reload systemd
+  systemd:
+    daemon_reload: true
+  when: etcd_systemd_file.changed
+
+# Перезапускаем ETCD сервис
+# Если:
+## Конфигурационный файл systemd был изменен или
+## Конфигурационный файл ETCD был изменен или
+## Сертификаты были изменены
+- name: ETCD | Restart etcd service
+  service:
+    name: etcd
+    state: restarted
+    enabled: true
+  register: etcd_restarted
+  when:
+    - etcd_systemd_file.changed or
+      etcd_env_file.changed or
+      etcd_certs_changed|default(false)
+
+# Убеждаемся что ETCD сервис запущен и добавлен в автозапуск
+- name: ETCD | Ensure ETCD is started and enabled at boot
+  service:
+    name: etcd
+    state: started
+    enabled: true
+# TODO реализовать добавление и удаление членов кластера ETCD - https://etcd.io/docs/v3.4.0/op-guide/runtime-configuration/

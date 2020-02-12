@@ -1,0 +1,11 @@
+{
+    "CN": "etcd-ca",
+    "key": {
+        "algo": "rsa",
+        "size": 
+            {{ ca_certificates_key_size|default('4096') }}
+    },
+    "ca": {
+        "expiry": "{{ ca_certificates_duration|default('87600h') }}"
+    }
+}

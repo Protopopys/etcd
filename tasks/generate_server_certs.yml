@@ -1,0 +1,71 @@
+---
+- name: ETCD |(when cert_provider == cfssl)
+  block:
+    - name: ETCD | Copy ETCD CA signing config file
+      template:
+        src: "etcd-ca-config.json.j2"
+        dest: "{{ etcd_cert_dir }}/etcd-ca-config.json"
+        mode: '0644'
+      register: etcd_ca_sign_conf
+
+    - name: ETCD | Copy ETCD Server cert config files
+      template:
+        src: "etcd-server-csr.json.j2"
+        dest: "{{ etcd_cert_dir }}/etcd-server-csr.json"
+        mode: 0644
+      register: etcd_server_conf
+
+    - name: ETCD | Check that ETCD Server cert exists
+      stat:
+        path: "{{ etcd_cert_dir }}/server-key.pem"
+      register: etcd_server_cert
+
+    - name: ETCD | Generatting ETCD Server cert
+      shell: "{{ bin_path }}/cfssl gencert -ca={{ etcd_cert_dir }}/etcd-ca.pem -ca-key={{ etcd_cert_dir }}/etcd-ca-key.pem -config={{ etcd_cert_dir }}/etcd-ca-config.json -profile=server {{ etcd_cert_dir }}/etcd-server-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/server"
+      when:
+        - not etcd_server_cert.stat.exists or
+          etcd_server_conf.changed or
+          etcd_ca_changed
+      register: generated_etcd_server_certs
+  when: cert_provider == 'cfssl'
+
+- name: ETCD |(when cert_provider == ssl)
+  block:
+    - name: ETCD | Generate an OpenSSL private key with the default values (4096 bits, RSA)
+      openssl_privatekey:
+        path: "{{ etcd_cert_dir }}/server-key.pem"
+        owner: "{{ etcd_user }}"
+        group: "{{ etcd_group }}"
+        type: RSA
+        size: "{{ certificates_key_size }}"
+
+    - name: ETCD | Generate an OpenSSL Certificate Signing Request
+      openssl_csr:
+        path: "{{ etcd_cert_dir }}/server.csr"
+        owner: "{{ etcd_user }}"
+        group: "{{ etcd_group }}"
+        privatekey_path: "{{ etcd_cert_dir }}/server-key.pem"
+        common_name: "{{ inventory_hostname }}"
+        subject_alt_name: "DNS:localhost,DNS:{{ inventory_hostname }},IP:127.0.0.1,IP:{{ ip | default(ansible_host) }}"
+        key_usage_critical: true
+        key_usage:
+          - digitalSignature
+          - keyEncipherment
+        extended_key_usage:
+          - clientAuth
+          - serverAuth
+
+    - name: Generate an OpenSSL certificate signed with your own CA certificate
+      openssl_certificate:
+        path: "{{ etcd_cert_dir }}/server.pem"
+        csr_path: "{{ etcd_cert_dir }}/server-key.pem"
+        ownca_path: "{{ etcd_cert_dir }}/etcd-ca.pem"
+        ownca_privatekey_path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
+        provider: ownca
+      register: generated_etcd_server_certs
+  when: cert_provider == 'ssl'
+
+- name: ETCD | Set 'etcd_certs_changed' to true
+  set_fact:
+    etcd_certs_changed: true
+  when: generated_etcd_server_certs.changed

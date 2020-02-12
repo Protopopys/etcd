@@ -1,0 +1,17 @@
+[Unit]
+Description=etcd key-value store
+Documentation=https://github.com/coreos
+After=network.target
+
+[Service]
+Type=notify
+User=root
+EnvironmentFile={{ etcd_config_dir }}/etcd.env
+ExecStart={{ bin_path }}/etcd
+NotifyAccess=all
+Restart=always
+RestartSec=10s
+LimitNOFILE=40000
+
+[Install]
+WantedBy=multi-user.target

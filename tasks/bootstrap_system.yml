@@ -1,0 +1,25 @@
+---
+# Создаем группу
+# Если:
+## Группа не root
+- name: ETCD | Create user group
+  group:
+    name: "{{ etcd_group }}"
+  when:
+    - etcd_group != "root"
+    - etcd_manage_user|default(false)
+
+# Создаем пользователя
+# Если:
+## Пользователь не root
+- name: ETCD | Create user
+  user:
+    name: "{{ etcd_user }}"
+    groups: "{{ etcd_group }}"
+    generate_ssh_key: "{{ etcd_ssh_key }}"
+    shell: "{{ etcd_shell }}"
+    system: "{{ etcd_system }}"
+    create_home: false
+  when:
+    - etcd_user != "root"
+    - etcd_manage_user|default(false)

@@ -1,0 +1,175 @@
+---
+# Проверяем наличие бинарных файлов
+- name: ETCD | Check etcd binary exists
+  stat:
+    path: "{{ etcd_destination_path }}/{{ item }}"
+    checksum_algorithm: "{{ etcd[etcd_version].checksum_algorithm }}"
+  register: etcd_bin
+  loop:
+    - etcd
+    - etcdctl
+
+# Создаем переменную install_etcd=true
+# Если:
+## Бинарные файлы отсутствуют или
+## Контрольная сумма бинарных файлов не соответствует требуемой
+- name: ETCD | Set 'install_etcd' to true
+  set_fact:
+    install_etcd: true
+  loop: "{{ etcd_bin.results }}"
+  when: item.stat.checksum|default() != etcd[etcd_version][item.item].checksum
+
+- name: ETCD |(when install_etcd == TRUE)
+  block:
+    # Создаем папки на удаленной машине
+    - name: ETCD | Creating folders
+      file:
+        path: "{{ etcd_destination_path }}"
+        state: directory
+        owner: "{{ etcd_user }}"
+        group: "{{ etcd_group }}"
+        mode: u+rwx
+
+    # Получаем информацию о сервисах на удаленной машине
+    # Если:
+    ## Бинарный файл ETCD существует на удаленном сервере
+    - name: ETCD | Get service facts
+      service_facts: {}
+
+    # Создаем папки на удаленной машине
+    - name: ETCD | Creating folders
+      file:
+        path: "{{ distribution_path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: u+rwx
+
+    # Проверяем наличие архива на удаленной машине
+    - name: ETCD | Check that the etcd archive exists on the destination host
+      stat:
+        path: "{{ distribution_path }}/{{ etcd[etcd_version].source_url | basename }}"
+        checksum_algorithm: "{{ etcd[etcd_version].checksum_algorithm }}"
+      register: etcd_archive
+  when: install_etcd|default(false)
+
+# Блок заданий
+# Исполняется если:
+## Использвание downloader сервера включено - use_downloader=true и
+## Архива нет на удаленном сервере или Контрольная сумма архива не совпадает с указанной в переменной - etcd[etcd_version].archive_checksum
+- name: ETCD |(when use_downloader == TRUE)
+  block:
+    # Создаем папку на downloader сервере (в данную папку будет осуществляться скачивание архива из сети интернет)
+    - name: ETCD | Creating default folder for components
+      file:
+        path: "{{ downloader_source_folder }}"
+        state: directory
+        mode: u+rwx
+      run_once: true
+      delegate_to: "{{ downloader }}"
+
+    # Проверяем наличие архива на downloader сервере
+    - name: ETCD | Check that the etcd archive exists on the {{ downloader }}
+      stat:
+        path: "{{ downloader_source_folder }}/{{ etcd[etcd_version].source_url | basename }}"
+        checksum_algorithm: "{{ etcd[etcd_version].checksum_algorithm }}"
+      register: downloader_distr
+      delegate_to: "{{ downloader }}"
+
+    # Выкачиваем архив напрямую из сети интернет
+    # Если:
+    ## Если архива нет на downloader сервере или Контрольная сумма архива не совпадает с указанной в переменной - etcd[etcd_version].archive_checksum)
+    - name: ETCD | Download etcd archive to {{ downloader }}
+      get_url:
+        url: "{{ etcd[etcd_version].source_url }}"
+        dest: "{{ downloader_source_folder }}"
+        checksum: "{{ etcd[etcd_version].checksum_algorithm }}:{{ etcd[etcd_version].archive_checksum }}"
+      run_once: true
+      delegate_to: "{{ downloader }}"
+      when: downloader_distr.stat.checksum|default() != etcd[etcd_version].archive_checksum
+
+    # Выполняем синхронизацию архива с удаленной машиной
+    # Если:
+    ## downloader сервером не является localhost (не та машина на которой осуществляется запуск playbook)
+    - name: ETCD | Copy from {{ downloader }} to remote host
+      synchronize:
+        checksum: true
+        src: "{{ downloader_source_folder }}/{{ etcd[etcd_version].source_url | basename }}"
+        dest: "{{ distribution_path }}"
+      delegate_to: "{{ downloader }}"
+      notify:
+        - ETCD | Ensure service is stopped
+      when: downloader != "localhost"
+
+    # Выполняем копирование архива на удаленную машину
+    # Если:
+    ## downloader сервером является localhost (машина на которой осуществляется запуск playbook)
+    - name: ETCD | Copy from {{ downloader }} to remote host
+      copy:
+        src: "{{ downloader_source_folder }}/{{ etcd[etcd_version].source_url | basename }}"
+        dest: "{{ distribution_path }}"
+        owner: root
+        group: root
+        mode: u+rwx
+      notify:
+        - ETCD | Ensure service is stopped
+      when: downloader == "localhost"
+  when:
+    - install_etcd|default(false)
+    - use_downloader
+    - etcd_archive.stat.checksum|default() != etcd[etcd_version].archive_checksum
+
+# Выкачиваем архив напрямую из сети интернет
+# Если:
+## Переменная install_etcd=true и
+## Использвание downloader сервера отключено: use_downloader=false и
+## Архива нет на удаленном сервере или Контрольная сумма архива не совпадает с указанной в переменной - etcd[etcd_version].archive_checksum)
+- name: ETCD | Download etcd archive to host
+  get_url:
+    url: "{{ etcd[etcd_version].source_url }}"
+    dest: "{{ distribution_path }}"
+    checksum: "{{ etcd[etcd_version].checksum_algorithm }}:{{ etcd[etcd_version].archive_checksum }}"
+    owner: root
+    group: root
+  notify:
+    - ETCD | Ensure service is stopped
+  when:
+    - install_etcd|default(false)
+    - not use_downloader
+    - etcd_archive.stat.checksum|default() != etcd[etcd_version].archive_checksum
+
+# Запускаем принудительное исполнение handlers
+- name: ETCD | Flush handlers
+  meta: flush_handlers
+
+# Ищем файлы в директории "{{ etcd_destination_path }}"
+# Если:
+## Контрольная сумма бинарного файла на удаленном хосте не совпадает с указанной в переменной
+- name: ETCD | Find files in "{{ etcd_destination_path }}"
+  find:
+    paths: "{{ etcd_destination_path }}"
+  register: files_to_delete
+  when: install_etcd|default(false)
+
+# Очищаем директорию "{{ etcd_destination_path }}"
+# Если:
+## Контрольная сумма бинарного файла на удаленном хосте не совпадает с указанной в переменной
+- name: ETCD | Cleanup directory
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ files_to_delete.files }}"
+  when: install_etcd|default(false)
+
+# Распаковываем архив на удаленном сервере
+# Если:
+## Переменная install_etcd=true
+- name: ETCD | Extract etcd archive into {{ etcd_destination_path }}
+  unarchive:
+    src: "{{ etcd_destination_path }}/{{ etcd[etcd_version].source_url | basename }}"
+    dest: "{{ etcd_destination_path }}"
+    owner: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"
+    remote_src: true
+    extra_opts: "{{ etcd[etcd_version].extra_opts }}"
+  when: install_etcd|default(false)
