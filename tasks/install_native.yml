@@ -166,7 +166,7 @@
 ## Переменная install_etcd=true
 - name: ETCD | Extract etcd archive into {{ etcd_destination_path }}
   unarchive:
-    src: "{{ etcd_destination_path }}/{{ etcd[etcd_version].source_url | basename }}"
+    src: "{{ distribution_path }}/{{ etcd[etcd_version].source_url | basename }}"
     dest: "{{ etcd_destination_path }}"
     owner: "{{ etcd_user }}"
     group: "{{ etcd_group }}"

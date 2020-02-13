@@ -58,7 +58,7 @@
     - name: Generate an OpenSSL certificate signed with your own CA certificate
       openssl_certificate:
         path: "{{ etcd_cert_dir }}/server.pem"
-        csr_path: "{{ etcd_cert_dir }}/server-key.pem"
+        csr_path: "{{ etcd_cert_dir }}/server.csr"
         ownca_path: "{{ etcd_cert_dir }}/etcd-ca.pem"
         ownca_privatekey_path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
         provider: ownca
