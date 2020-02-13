@@ -25,7 +25,7 @@
   block:
     - name: ETCD | Generate an OpenSSL private key with the default values (4096 bits, RSA)
       openssl_privatekey:
-        path: "{{ etcd_cert_dir }}/healthcheck-client.pem"
+        path: "{{ etcd_cert_dir }}/healthcheck-client-key.pem"
         owner: "{{ etcd_user }}"
         group: "{{ etcd_group }}"
         type: RSA
@@ -36,7 +36,7 @@
         path: "{{ etcd_cert_dir }}/healthcheck-client.csr"
         owner: "{{ etcd_user }}"
         group: "{{ etcd_group }}"
-        privatekey_path: "{{ etcd_cert_dir }}/healthcheck-client.pem"
+        privatekey_path: "{{ etcd_cert_dir }}/healthcheck-client-key.pem"
         organization_name: system:masters
         common_name: kube-etcd-healthcheck-client
         use_common_name_for_san: false
