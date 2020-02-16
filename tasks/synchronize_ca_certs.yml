@@ -17,11 +17,10 @@
     group: "{{ etcd_group }}"
     mode: 0600
   no_log: true
-  register: copy_etcd_ca_certs
+  notify: ETCD | Set 'etcd_ca_changed' to true
   loop: "{{ etcd_ca_certs.results }}"
   when: ansible_hostname != groups['etcd'][0]
 
-- name: ETCD | Set 'etcd_ca_changed' to false
-  set_fact:
-    etcd_ca_changed: true
-  when: copy_etcd_ca_certs.changed
+# Запускаем принудительное исполнение handlers
+- name: ETCD | Flush handlers
+  meta: flush_handlers

@@ -6,8 +6,42 @@ driver:
 lint:
   name: yamllint
 platforms:
-  - name: instance
-    image: centos:7
+  - name: instance1
+    groups:
+      - etcd
+    image: ${MOLECULE_DISTRO:-centos/systemd }
+    privileged: true
+    command: /sbin/init
+    security_opts:
+      - seccomp=unconfigured
+    capabilities:
+      - SYS_ADMIN
+    volume_mounts:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+  - name: instance2
+    groups:
+      - etcd
+    image: ${MOLECULE_DISTRO:-centos/systemd }
+    privileged: true
+    command: /sbin/init
+    security_opts:
+      - seccomp=unconfigured
+    capabilities:
+      - SYS_ADMIN
+    volume_mounts:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+  - name: instance3
+    groups:
+      - etcd
+    image: ${MOLECULE_DISTRO:-centos/systemd }
+    privileged: true
+    command: /sbin/init
+    security_opts:
+      - seccomp=unconfigured
+    capabilities:
+      - SYS_ADMIN
+    volume_mounts:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
 provisioner:
   name: ansible
   lint:

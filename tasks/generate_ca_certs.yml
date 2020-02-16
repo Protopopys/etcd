@@ -16,24 +16,24 @@
       register: etcd_ca_cert
 
     - name: ETCD | Generatting ETCD CA cert
-      shell: "{{ bin_path }}/cfssl genkey -initca {{ etcd_cert_dir }}/etcd-ca-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/etcd-ca"    
-      when: 
+      shell: "{{ bin_path }}/cfssl genkey -initca {{ etcd_cert_dir }}/etcd-ca-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/etcd-ca"
+      when:
         - not etcd_ca_cert.stat.exists or
           etcd_ca_conf.changed
-      register: generated_etcd_ca_certs
+      notify: ETCD | Set 'etcd_ca_changed' to true
   when: cert_provider == 'cfssl'
 
 - name: ETCD |(when cert_provider == ssl)
   block:
-    - name: ETCD | Generate an OpenSSL private key with the default values (4096 bits, RSA)
+    - name: ETCD | Generate an OpenSSL private CA key
       openssl_privatekey:
         path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
         owner: "{{ etcd_user }}"
         group: "{{ etcd_group }}"
         type: RSA
         size: "{{ ca_certificates_key_size }}"
-  
-    - name: ETCD | Generate an OpenSSL Certificate Signing Request
+
+    - name: ETCD | Generate an OpenSSL Certificate Signing Request for CA certificate
       openssl_csr:
         path: "{{ etcd_cert_dir }}/etcd-ca.csr"
         owner: "{{ etcd_user }}"
@@ -49,7 +49,7 @@
           - keyEncipherment
           - keyCertSign
 
-    - name: ETCD | Generate a Self Signed OpenSSL certificate
+    - name: ETCD | Generate a Self Signed OpenSSL CA certificate
       openssl_certificate:
         path: "{{ etcd_cert_dir }}/etcd-ca.pem"
         owner: "{{ etcd_user }}"
@@ -57,10 +57,5 @@
         privatekey_path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
         csr_path: "{{ etcd_cert_dir }}/etcd-ca.csr"
         provider: selfsigned
-      register: generated_etcd_ca_certs
+      notify: ETCD | Set 'etcd_ca_changed' to true
   when: cert_provider == 'ssl'
-
-- name: ETCD | Set 'etcd_ca_changed' to true
-  set_fact:
-    etcd_ca_changed: true
-  when: generated_etcd_ca_certs.changed

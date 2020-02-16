@@ -12,11 +12,6 @@
     - "{{ etcd_cert_dir }}"
     - "{{ etcd_data_dir }}"
 
-- name: ETCD | Set facts to false
-  set_fact:
-    etcd_ca_changed: false
-    etcd_certs_changed: false
-
 - name: ETCD | Generate ETCD CA certs
   import_tasks: "generate_ca_certs.yml"
   delegate_to: "{{ groups['etcd'][0] }}"
@@ -40,9 +35,9 @@
     src: "etcd.env.j2"
     dest: "{{ etcd_conf_dir }}/etcd.env"
     owner: "{{ etcd_user }}"
-    group: "{{ etcd_group }}"    
+    group: "{{ etcd_group }}"
     backup: true
-  register: etcd_env_file
+  notify: ETCD | Restart etcd
 
 # Создаем конфигурационный файл systemd сервиса ETCD
 - name: ETCD | Creating etcd.service file
@@ -52,31 +47,23 @@
     owner: "{{ etcd_user }}"
     group: "{{ etcd_group }}"
     backup: true
-  register: etcd_systemd_file
+  notify:
+    - ETCD | Reload systemd
+    - ETCD | Restart etcd
 
-# Перечитываем конфигурацию systemd
-# Если:
-## Конфигурационный файл systemd был изменен
-- name: ETCD | Reload systemd
-  systemd:
-    daemon_reload: true
-  when: etcd_systemd_file.changed
+# Запускаем принудительное исполнение handlers
+- name: ETCD | Flush handlers
+  meta: flush_handlers
 
-# Перезапускаем ETCD сервис
-# Если:
-## Конфигурационный файл systemd был изменен или
-## Конфигурационный файл ETCD был изменен или
-## Сертификаты были изменены
-- name: ETCD | Restart etcd service
-  service:
-    name: etcd
-    state: restarted
-    enabled: true
-  register: etcd_restarted
-  when:
-    - etcd_systemd_file.changed or
-      etcd_env_file.changed or
-      etcd_certs_changed|default(false)
+- name: ETCD | Validating if the ETCD is UP and OPENED the PORT
+  wait_for:
+    host: "127.0.0.1"
+    port: 2379
+    delay: 3
+    sleep: 3
+    timeout: 15
+    state: started
+    msg: "WebServer PORT is not Listening"
 
 # Убеждаемся что ETCD сервис запущен и добавлен в автозапуск
 - name: ETCD | Ensure ETCD is started and enabled at boot

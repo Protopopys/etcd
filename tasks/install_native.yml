@@ -9,6 +9,10 @@
     - etcd
     - etcdctl
 
+# Получаем информацию о сервисах на удаленной машине
+- name: ETCD | Get service facts
+  service_facts: {}
+
 # Создаем переменную install_etcd=true
 # Если:
 ## Бинарные файлы отсутствуют или
@@ -29,12 +33,6 @@
         owner: "{{ etcd_user }}"
         group: "{{ etcd_group }}"
         mode: u+rwx
-
-    # Получаем информацию о сервисах на удаленной машине
-    # Если:
-    ## Бинарный файл ETCD существует на удаленном сервере
-    - name: ETCD | Get service facts
-      service_facts: {}
 
     # Создаем папки на удаленной машине
     - name: ETCD | Creating folders
@@ -97,8 +95,7 @@
         src: "{{ downloader_source_folder }}/{{ etcd[etcd_version].source_url | basename }}"
         dest: "{{ distribution_path }}"
       delegate_to: "{{ downloader }}"
-      notify:
-        - ETCD | Ensure service is stopped
+      notify: ETCD | Ensure service is stopped
       when: downloader != "localhost"
 
     # Выполняем копирование архива на удаленную машину
@@ -111,8 +108,7 @@
         owner: root
         group: root
         mode: u+rwx
-      notify:
-        - ETCD | Ensure service is stopped
+      notify: ETCD | Ensure service is stopped
       when: downloader == "localhost"
   when:
     - install_etcd|default(false)
@@ -131,8 +127,7 @@
     checksum: "{{ etcd[etcd_version].checksum_algorithm }}:{{ etcd[etcd_version].archive_checksum }}"
     owner: root
     group: root
-  notify:
-    - ETCD | Ensure service is stopped
+  notify: ETCD | Ensure service is stopped
   when:
     - install_etcd|default(false)
     - not use_downloader

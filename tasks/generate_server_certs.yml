@@ -21,17 +21,22 @@
       register: etcd_server_cert
 
     - name: ETCD | Generatting ETCD Server cert
-      shell: "{{ bin_path }}/cfssl gencert -ca={{ etcd_cert_dir }}/etcd-ca.pem -ca-key={{ etcd_cert_dir }}/etcd-ca-key.pem -config={{ etcd_cert_dir }}/etcd-ca-config.json -profile=server {{ etcd_cert_dir }}/etcd-server-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/server"
+      shell: >-
+        {{ bin_path }}/cfssl gencert
+        -ca={{ etcd_cert_dir }}/etcd-ca.pem
+        -ca-key={{ etcd_cert_dir }}/etcd-ca-key.pem
+        -config={{ etcd_cert_dir }}/etcd-ca-config.json
+        -profile=server {{ etcd_cert_dir }}/etcd-server-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/server
       when:
         - not etcd_server_cert.stat.exists or
           etcd_server_conf.changed or
-          etcd_ca_changed
-      register: generated_etcd_server_certs
+          etcd_ca_changed|default(false)
+      notify: ETCD | Restart etcd
   when: cert_provider == 'cfssl'
 
 - name: ETCD |(when cert_provider == ssl)
   block:
-    - name: ETCD | Generate an OpenSSL private key with the default values (4096 bits, RSA)
+    - name: ETCD | Generate an OpenSSL private Server key
       openssl_privatekey:
         path: "{{ etcd_cert_dir }}/server-key.pem"
         owner: "{{ etcd_user }}"
@@ -39,14 +44,14 @@
         type: RSA
         size: "{{ certificates_key_size }}"
 
-    - name: ETCD | Generate an OpenSSL Certificate Signing Request
+    - name: ETCD | Generate an OpenSSL Certificate Signing Request for Server certificate
       openssl_csr:
         path: "{{ etcd_cert_dir }}/server.csr"
         owner: "{{ etcd_user }}"
         group: "{{ etcd_group }}"
         privatekey_path: "{{ etcd_cert_dir }}/server-key.pem"
         common_name: "{{ inventory_hostname }}"
-        subject_alt_name: "DNS:localhost,DNS:{{ inventory_hostname }},IP:127.0.0.1,IP:{{ ip | default(ansible_host) }}"
+        subject_alt_name: "DNS:localhost,DNS:{{ inventory_hostname }},IP:127.0.0.1,IP:{{ ip | default(ansible_default_ipv4.address) }}"
         key_usage_critical: true
         key_usage:
           - digitalSignature
@@ -55,17 +60,12 @@
           - clientAuth
           - serverAuth
 
-    - name: Generate an OpenSSL certificate signed with your own CA certificate
+    - name: Generate an OpenSSL Server certificate signed with your own CA certificate
       openssl_certificate:
         path: "{{ etcd_cert_dir }}/server.pem"
         csr_path: "{{ etcd_cert_dir }}/server.csr"
         ownca_path: "{{ etcd_cert_dir }}/etcd-ca.pem"
         ownca_privatekey_path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
         provider: ownca
-      register: generated_etcd_server_certs
+      notify: ETCD | Restart etcd
   when: cert_provider == 'ssl'
-
-- name: ETCD | Set 'etcd_certs_changed' to true
-  set_fact:
-    etcd_certs_changed: true
-  when: generated_etcd_server_certs.changed

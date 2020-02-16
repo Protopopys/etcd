@@ -73,7 +73,7 @@ etcd:
 
 etcd_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ hostvars[item].inventory_hostname }}=https://{{ hostvars[item].ip | default(hostvars[item].ansible_host) }}:2380{% if not loop.last %},{% endif %}
+    {{ hostvars[item].inventory_hostname }}=https://{{ hostvars[item].ip | default(hostvars[item].ansible_default_ipv4.address) }}:2380{% if not loop.last %},{% endif %}
   {%- endfor %}
 
 etcd_metrics: "basic"
