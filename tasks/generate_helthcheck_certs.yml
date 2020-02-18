@@ -15,7 +15,7 @@
 
     - name: ETCD | Generatting ETCD healthcheck cert
       shell: "{{ bin_path }}/cfssl gencert -ca={{ etcd_cert_dir }}/etcd-ca.pem -ca-key={{ etcd_cert_dir }}/etcd-ca-key.pem -config={{ etcd_cert_dir }}/etcd-ca-config.json -profile=client {{ etcd_cert_dir }}/etcd-healthcheck-client-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/etcd-healthcheck-client"
-      when: 
+      when:
         - not etcd_healthcheck_cert.stat.exists or
           etcd_healthcheck_conf.changed or
           etcd_ca_changed

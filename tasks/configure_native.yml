@@ -40,7 +40,7 @@
     src: "etcd.env.j2"
     dest: "{{ etcd_conf_dir }}/etcd.env"
     owner: "{{ etcd_user }}"
-    group: "{{ etcd_group }}"    
+    group: "{{ etcd_group }}"
     backup: true
   register: etcd_env_file
 

@@ -2,12 +2,10 @@
 # Проверяем наличие бинарных файлов
 - name: ETCD | Check etcd binary exists
   stat:
-    path: "{{ etcd_destination_path }}/{{ item }}"
+    path: "{{ bin_path }}/{{ item }}"
     checksum_algorithm: "{{ etcd[etcd_version].checksum_algorithm }}"
   register: etcd_bin
-  loop:
-    - etcd
-    - etcdctl
+  loop: "{{ etcd_bin_name }}"
 
 # Создаем переменную install_etcd=true
 # Если:
@@ -21,18 +19,7 @@
 
 - name: ETCD |(when install_etcd == TRUE)
   block:
-    # Создаем папки на удаленной машине
-    - name: ETCD | Creating folders
-      file:
-        path: "{{ etcd_destination_path }}"
-        state: directory
-        owner: "{{ etcd_user }}"
-        group: "{{ etcd_group }}"
-        mode: u+rwx
-
     # Получаем информацию о сервисах на удаленной машине
-    # Если:
-    ## Бинарный файл ETCD существует на удаленном сервере
     - name: ETCD | Get service facts
       service_facts: {}
 
@@ -97,8 +84,7 @@
         src: "{{ downloader_source_folder }}/{{ etcd[etcd_version].source_url | basename }}"
         dest: "{{ distribution_path }}"
       delegate_to: "{{ downloader }}"
-      notify:
-        - ETCD | Ensure service is stopped
+      notify: ETCD | Ensure service is stopped
       when: downloader != "localhost"
 
     # Выполняем копирование архива на удаленную машину
@@ -111,8 +97,7 @@
         owner: root
         group: root
         mode: u+rwx
-      notify:
-        - ETCD | Ensure service is stopped
+      notify: ETCD | Ensure service is stopped
       when: downloader == "localhost"
   when:
     - install_etcd|default(false)
@@ -131,8 +116,7 @@
     checksum: "{{ etcd[etcd_version].checksum_algorithm }}:{{ etcd[etcd_version].archive_checksum }}"
     owner: root
     group: root
-  notify:
-    - ETCD | Ensure service is stopped
+  notify: ETCD | Ensure service is stopped
   when:
     - install_etcd|default(false)
     - not use_downloader
@@ -142,34 +126,15 @@
 - name: ETCD | Flush handlers
   meta: flush_handlers
 
-# Ищем файлы в директории "{{ etcd_destination_path }}"
-# Если:
-## Контрольная сумма бинарного файла на удаленном хосте не совпадает с указанной в переменной
-- name: ETCD | Find files in "{{ etcd_destination_path }}"
-  find:
-    paths: "{{ etcd_destination_path }}"
-  register: files_to_delete
-  when: install_etcd|default(false)
-
-# Очищаем директорию "{{ etcd_destination_path }}"
-# Если:
-## Контрольная сумма бинарного файла на удаленном хосте не совпадает с указанной в переменной
-- name: ETCD | Cleanup directory
-  file:
-    path: "{{ item.path }}"
-    state: absent
-  loop: "{{ files_to_delete.files }}"
-  when: install_etcd|default(false)
-
 # Распаковываем архив на удаленном сервере
 # Если:
 ## Переменная install_etcd=true
-- name: ETCD | Extract etcd archive into {{ etcd_destination_path }}
+- name: ETCD | Extract etcd archive into {{ bin_path }}
   unarchive:
-    src: "{{ etcd_destination_path }}/{{ etcd[etcd_version].source_url | basename }}"
-    dest: "{{ etcd_destination_path }}"
-    owner: "{{ etcd_user }}"
-    group: "{{ etcd_group }}"
+    src: "{{ distribution_path }}/{{ etcd[etcd_version].source_url | basename }}"
+    dest: "{{ bin_path }}"
+    owner: root
+    group: root
     remote_src: true
     extra_opts: "{{ etcd[etcd_version].extra_opts }}"
   when: install_etcd|default(false)

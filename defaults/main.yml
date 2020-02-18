@@ -12,7 +12,11 @@ distribution_path: "/opt/DISTR"
 #etcd_version: v3.3.17
 etcd_version: v3.4.3
 # Папка на удаленном сервере куда будет осуществляться доставка архива с дальнейшей распаковкой
-etcd_destination_path: "/opt/etcd/{{ etcd_version }}"
+bin_path: /usr/local/bin
+# Имена устанавливаемых компонентов
+etcd_bin_name:
+  - etcd
+  - etcdctl
 
 # Тип установки:
 ## native - бинарник в хост системе
@@ -29,7 +33,7 @@ certificates_duration: 26280h
 cert_provider: ssl
 
 # Параметры создания пользователя
-etcd_manage_user: true
+etcd_manage_user: false
 etcd_user: etcd
 etcd_group: etcd
 etcd_system: true
