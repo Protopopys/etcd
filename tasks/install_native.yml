@@ -7,6 +7,10 @@
   register: etcd_bin
   loop: "{{ etcd_bin_name }}"
 
+# Получаем информацию о сервисах на удаленной машине
+- name: ETCD | Get service facts
+  service_facts: {}
+
 # Создаем переменную install_etcd=true
 # Если:
 ## Бинарные файлы отсутствуют или

@@ -1,0 +1,6 @@
+---
+etcd_required_packages:
+  python2:
+    - python-module-cryptography
+  python3:
+    - python3-module-cryptography

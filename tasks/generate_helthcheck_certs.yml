@@ -14,29 +14,34 @@
       register: etcd_healthcheck_cert
 
     - name: ETCD | Generatting ETCD healthcheck cert
-      shell: "{{ bin_path }}/cfssl gencert -ca={{ etcd_cert_dir }}/etcd-ca.pem -ca-key={{ etcd_cert_dir }}/etcd-ca-key.pem -config={{ etcd_cert_dir }}/etcd-ca-config.json -profile=client {{ etcd_cert_dir }}/etcd-healthcheck-client-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/etcd-healthcheck-client"
+      shell: >-
+        {{ bin_path }}/cfssl gencert
+        -ca={{ etcd_cert_dir }}/etcd-ca.pem
+        -ca-key={{ etcd_cert_dir }}/etcd-ca-key.pem
+        -config={{ etcd_cert_dir }}/etcd-ca-config.json
+        -profile=client {{ etcd_cert_dir }}/etcd-healthcheck-client-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/etcd-healthcheck-client
       when:
         - not etcd_healthcheck_cert.stat.exists or
           etcd_healthcheck_conf.changed or
-          etcd_ca_changed
+          etcd_ca_changed|default(false)
   when: cert_provider == 'cfssl'
 
 - name: ETCD |(when cert_provider == ssl)
   block:
-    - name: ETCD | Generate an OpenSSL private key with the default values (4096 bits, RSA)
+    - name: ETCD | Generate an OpenSSL private healthcheck key
       openssl_privatekey:
-        path: "{{ etcd_cert_dir }}/healthcheck-client.pem"
+        path: "{{ etcd_cert_dir }}/healthcheck-client-key.pem"
         owner: "{{ etcd_user }}"
         group: "{{ etcd_group }}"
         type: RSA
         size: "{{ certificates_key_size }}"
 
-    - name: ETCD | Generate an OpenSSL Certificate Signing Request
+    - name: ETCD | Generate an OpenSSL Certificate Signing Request fot healthcheck certificate
       openssl_csr:
         path: "{{ etcd_cert_dir }}/healthcheck-client.csr"
         owner: "{{ etcd_user }}"
         group: "{{ etcd_group }}"
-        privatekey_path: "{{ etcd_cert_dir }}/healthcheck-client.pem"
+        privatekey_path: "{{ etcd_cert_dir }}/healthcheck-client-key.pem"
         organization_name: system:masters
         common_name: kube-etcd-healthcheck-client
         use_common_name_for_san: false
@@ -47,10 +52,10 @@
         extended_key_usage:
           - clientAuth
 
-    - name: Generate an OpenSSL certificate signed with your own CA certificate
+    - name: Generate an OpenSSL healthcheck certificate signed with your own CA certificate
       openssl_certificate:
         path: "{{ etcd_cert_dir }}/healthcheck-client.pem"
-        csr_path: "{{ etcd_cert_dir }}/healthcheck-client.pem"
+        csr_path: "{{ etcd_cert_dir }}/healthcheck-client.csr"
         ownca_path: "{{ etcd_cert_dir }}/etcd-ca.pem"
         ownca_privatekey_path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
         provider: ownca

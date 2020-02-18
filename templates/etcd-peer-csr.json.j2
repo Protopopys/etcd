@@ -3,7 +3,7 @@
     "hosts": [
         "localhost",
         "127.0.0.1",
-        "{{ ip | default(ansible_host) }}",
+        "{{ ip | default(ansible_default_ipv4.address) }}",
         "{{ inventory_hostname }}"
     ],
     "key": {

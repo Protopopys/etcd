@@ -43,7 +43,7 @@ etcd_ssh_key: false
 # Папка для конфигурационных файлов
 etcd_conf_dir: /etc/etcd
 # Папка для сертификатов
-etcd_cert_dir: "{{ etcd_config_dir }}/pki"
+etcd_cert_dir: "{{ etcd_conf_dir }}/pki"
 # Папка для данных
 etcd_data_dir: /var/lib/etcd
 
@@ -77,7 +77,7 @@ etcd:
 
 etcd_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ hostvars[item].inventory_hostname }}=https://{{ hostvars[item].ip | default(hostvars[item].ansible_host) }}:2380{% if not loop.last %},{% endif %}
+    {{ hostvars[item].inventory_hostname }}=https://{{ hostvars[item].ip | default(hostvars[item].ansible_default_ipv4.address) }}:2380{% if not loop.last %},{% endif %}
   {%- endfor %}
 
 etcd_metrics: "basic"

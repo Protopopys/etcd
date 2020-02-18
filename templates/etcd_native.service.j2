@@ -6,8 +6,8 @@ After=network.target
 [Service]
 Type=notify
 User=root
-EnvironmentFile={{ etcd_config_dir }}/etcd.env
-ExecStart={{ bin_path }}/etcd
+EnvironmentFile={{ etcd_conf_dir }}/etcd.env
+ExecStart={{ etcd_destination_path }}/etcd
 NotifyAccess=all
 Restart=always
 RestartSec=10s

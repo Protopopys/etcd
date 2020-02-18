@@ -1,5 +1,5 @@
 ---
 - name: Converge
-  hosts: localhost
+  hosts: all
   roles:
     - role: ansible-etcd
