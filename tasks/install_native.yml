@@ -57,44 +57,32 @@
         state: directory
         mode: u+rwx
       run_once: true
-      delegate_to: "{{ downloader }}"
+      delegate_to: localhost
 
     # Проверяем наличие архива на downloader сервере
-    - name: ETCD | Check that the etcd archive exists on the {{ downloader }}
+    - name: ETCD | Check that the etcd archive exists on the localhost
       stat:
         path: "{{ downloader_source_folder }}/{{ etcd[etcd_version].source_url | basename }}"
         checksum_algorithm: "{{ etcd[etcd_version].checksum_algorithm }}"
       register: downloader_distr
-      delegate_to: "{{ downloader }}"
+      delegate_to: localhost
 
     # Выкачиваем архив напрямую из сети интернет
     # Если:
     ## Если архива нет на downloader сервере или Контрольная сумма архива не совпадает с указанной в переменной - etcd[etcd_version].archive_checksum)
-    - name: ETCD | Download etcd archive to {{ downloader }}
+    - name: ETCD | Download etcd archive to localhost
       get_url:
         url: "{{ etcd[etcd_version].source_url }}"
         dest: "{{ downloader_source_folder }}"
         checksum: "{{ etcd[etcd_version].checksum_algorithm }}:{{ etcd[etcd_version].archive_checksum }}"
       run_once: true
-      delegate_to: "{{ downloader }}"
+      delegate_to: localhost
       when: downloader_distr.stat.checksum|default() != etcd[etcd_version].archive_checksum
-
-    # Выполняем синхронизацию архива с удаленной машиной
-    # Если:
-    ## downloader сервером не является localhost (не та машина на которой осуществляется запуск playbook)
-    - name: ETCD | Copy from {{ downloader }} to remote host
-      synchronize:
-        checksum: true
-        src: "{{ downloader_source_folder }}/{{ etcd[etcd_version].source_url | basename }}"
-        dest: "{{ distribution_path }}"
-      delegate_to: "{{ downloader }}"
-      notify: ETCD | Ensure service is stopped
-      when: downloader != "localhost"
 
     # Выполняем копирование архива на удаленную машину
     # Если:
     ## downloader сервером является localhost (машина на которой осуществляется запуск playbook)
-    - name: ETCD | Copy from {{ downloader }} to remote host
+    - name: ETCD | Copy from localhost to remote host
       copy:
         src: "{{ downloader_source_folder }}/{{ etcd[etcd_version].source_url | basename }}"
         dest: "{{ distribution_path }}"
@@ -102,7 +90,6 @@
         group: root
         mode: u+rwx
       notify: ETCD | Ensure service is stopped
-      when: downloader == "localhost"
   when:
     - install_etcd|default(false)
     - use_downloader
