@@ -60,7 +60,7 @@
           - clientAuth
           - serverAuth
 
-    - name: Generate an OpenSSL Server certificate signed with your own CA certificate
+    - name: ETCD | Generate an OpenSSL Server certificate signed with your own CA certificate
       openssl_certificate:
         path: "{{ etcd_cert_dir }}/server.pem"
         csr_path: "{{ etcd_cert_dir }}/server.csr"

@@ -16,7 +16,10 @@
       register: etcd_ca_cert
 
     - name: ETCD | Generatting ETCD CA cert
-      shell: "{{ bin_path }}/cfssl genkey -initca {{ etcd_cert_dir }}/etcd-ca-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/etcd-ca"
+      shell: >-
+        {{ bin_path }}/cfssl genkey 
+        -initca {{ etcd_cert_dir }}/etcd-ca-csr.json | {{ bin_path }}/cfssljson 
+        -bare {{ etcd_cert_dir }}/etcd-ca
       when:
         - not etcd_ca_cert.stat.exists or
           etcd_ca_conf.changed
