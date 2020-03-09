@@ -10,7 +10,8 @@ distribution_path: "/opt/DISTR"
 #etcd_version: v3.3.17
 etcd_version: v3.4.3
 # Папка на удаленном сервере куда будет осуществляться доставка архива с дальнейшей распаковкой
-bin_path: /usr/local/bin
+etcd_bin_path: /usr/local/bin
+cfssl_bin_path: /usr/local/bin
 # Имена устанавливаемых компонентов
 etcd_bin_name:
   - etcd
@@ -31,7 +32,7 @@ certificates_duration: 26280h
 cert_provider: ssl
 
 # Параметры создания пользователя
-etcd_manage_user: false
+etcd_manage_user: true
 etcd_user: etcd
 etcd_group: etcd
 etcd_system: true
@@ -75,7 +76,7 @@ etcd:
 
 etcd_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ hostvars[item].inventory_hostname }}=https://{{ hostvars[item].ip | default(hostvars[item].ansible_default_ipv4.address) }}:2380{% if not loop.last %},{% endif %}
+    {{ hostvars[item].inventory_hostname }}=https://{{ hostvars[item].advertise_ip | default(hostvars[item].ansible_host) }}:2380{% if not loop.last %},{% endif %}
   {%- endfor %}
 
 etcd_metrics: "basic"

@@ -12,6 +12,14 @@
     - "{{ etcd_cert_dir }}"
     - "{{ etcd_data_dir }}"
 
+- name: ETCD | Copy ETCD CA signing config file
+  template:
+    src: "etcd-cfssl-config.json.j2"
+    dest: "{{ etcd_cert_dir }}/etcd-cfssl-config.json"
+    mode: "0644"
+  register: etcd_ca_sign_conf
+  when: "cert_provider == 'cfssl'"
+
 - name: ETCD | Generate ETCD CA certs
   import_tasks: "generate_ca_certs.yml"
   delegate_to: "{{ groups['etcd'][0] }}"

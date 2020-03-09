@@ -19,7 +19,7 @@
   no_log: true
   notify: ETCD | Set 'etcd_ca_changed' to true
   loop: "{{ etcd_ca_certs.results }}"
-  when: ansible_hostname != groups['etcd'][0]
+  when: inventory_hostname != groups['etcd'][0]
 
 # Запускаем принудительное исполнение handlers
 - name: ETCD | Flush handlers

@@ -17,8 +17,8 @@
 
     - name: ETCD | Generatting ETCD CA cert
       shell: >-
-        {{ bin_path }}/cfssl genkey 
-        -initca {{ etcd_cert_dir }}/etcd-ca-csr.json | {{ bin_path }}/cfssljson 
+        {{ cfssl_bin_path }}/cfssl genkey 
+        -initca {{ etcd_cert_dir }}/etcd-ca-csr.json | {{ cfssl_bin_path }}/cfssljson 
         -bare {{ etcd_cert_dir }}/etcd-ca
       when:
         - not etcd_ca_cert.stat.exists or

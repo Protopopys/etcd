@@ -15,11 +15,11 @@
 
     - name: ETCD | Generatting ETCD Peer cert
       shell: >-
-        {{ bin_path }}/cfssl gencert
+        {{ cfssl_bin_path }}/cfssl gencert
         -ca={{ etcd_cert_dir }}/etcd-ca.pem
         -ca-key={{ etcd_cert_dir }}/etcd-ca-key.pem
-        -config={{ etcd_cert_dir }}/etcd-ca-config.json
-        -profile=peer {{ etcd_cert_dir }}/etcd-peer-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/peer
+        -config={{ etcd_cert_dir }}/etcd-cfssl-config.json
+        -profile=peer {{ etcd_cert_dir }}/etcd-peer-csr.json | {{ cfssl_bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/peer
       when:
         - not etcd_peer_cert.stat.exists or
           etcd_peer_conf.changed or
@@ -44,7 +44,7 @@
         group: "{{ etcd_group }}"
         privatekey_path: "{{ etcd_cert_dir }}/peer-key.pem"
         common_name: "{{ inventory_hostname }}"
-        subject_alt_name: "DNS:localhost,DNS:{{ inventory_hostname }},IP:127.0.0.1,IP:{{ ip | default(ansible_default_ipv4.address) }}"
+        subject_alt_name: "DNS:localhost,DNS:{{ inventory_hostname }},IP:127.0.0.1,IP:{{ advertise_ip | default(ansible_host) }}"
         key_usage_critical: true
         key_usage:
           - digitalSignature
@@ -53,7 +53,7 @@
           - clientAuth
           - serverAuth
 
-    - name: Generate an OpenSSL Peer certificate signed with your own CA certificate
+    - name: ETCD | Generate an OpenSSL Peer certificate signed with your own CA certificate
       openssl_certificate:
         path: "{{ etcd_cert_dir }}/peer.pem"
         csr_path: "{{ etcd_cert_dir }}/peer.csr"

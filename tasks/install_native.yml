@@ -2,7 +2,7 @@
 # Проверяем наличие бинарных файлов
 - name: ETCD | Check etcd binary exists
   stat:
-    path: "{{ bin_path }}/{{ item }}"
+    path: "{{ etcd_bin_path }}/{{ item }}"
     checksum_algorithm: "{{ etcd[etcd_version].checksum_algorithm }}"
   register: etcd_bin
   loop: "{{ etcd_bin_name }}"
@@ -120,10 +120,10 @@
 # Распаковываем архив на удаленном сервере
 # Если:
 ## Переменная install_etcd=true
-- name: ETCD | Extract etcd archive into {{ bin_path }}
+- name: ETCD | Extract etcd archive into {{ etcd_bin_path }}
   unarchive:
     src: "{{ distribution_path }}/{{ etcd[etcd_version].source_url | basename }}"
-    dest: "{{ bin_path }}"
+    dest: "{{ etcd_bin_path }}"
     owner: root
     group: root
     remote_src: true

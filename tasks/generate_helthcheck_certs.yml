@@ -15,11 +15,11 @@
 
     - name: ETCD | Generatting ETCD healthcheck cert
       shell: >-
-        {{ bin_path }}/cfssl gencert
+        {{ cfssl_bin_path }}/cfssl gencert
         -ca={{ etcd_cert_dir }}/etcd-ca.pem
         -ca-key={{ etcd_cert_dir }}/etcd-ca-key.pem
-        -config={{ etcd_cert_dir }}/etcd-ca-config.json
-        -profile=client {{ etcd_cert_dir }}/etcd-healthcheck-client-csr.json | {{ bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/etcd-healthcheck-client
+        -config={{ etcd_cert_dir }}/etcd-cfssl-config.json
+        -profile=client {{ etcd_cert_dir }}/etcd-healthcheck-client-csr.json | {{ cfssl_bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/etcd-healthcheck-client
       when:
         - not etcd_healthcheck_cert.stat.exists or
           etcd_healthcheck_conf.changed or
@@ -52,7 +52,7 @@
         extended_key_usage:
           - clientAuth
 
-    - name: Generate an OpenSSL healthcheck certificate signed with your own CA certificate
+    - name: ETCD | Generate an OpenSSL healthcheck certificate signed with your own CA certificate
       openssl_certificate:
         path: "{{ etcd_cert_dir }}/healthcheck-client.pem"
         csr_path: "{{ etcd_cert_dir }}/healthcheck-client.csr"
