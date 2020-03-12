@@ -1,8 +1,4 @@
 ---
-- name: ETCD | Set 'etcd_ca_changed' to true
-  set_fact:
-    etcd_ca_changed: true
-
 # Перечитываем конфигурацию systemd
 - name: ETCD | Reload systemd
   systemd:

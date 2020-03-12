@@ -23,7 +23,7 @@
       when:
         - not etcd_healthcheck_cert.stat.exists or
           etcd_healthcheck_conf.changed or
-          etcd_ca_changed|default(false)
+          etcd_ca.changed|default(false)
   when: cert_provider == 'cfssl'
 
 - name: ETCD |(when cert_provider == ssl)

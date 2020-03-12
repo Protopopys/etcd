@@ -23,7 +23,7 @@
       when:
         - not etcd_ca_cert.stat.exists or
           etcd_ca_conf.changed
-      notify: ETCD | Set 'etcd_ca_changed' to true
+      register: etcd_ca
   when: cert_provider == 'cfssl'
 
 - name: ETCD |(when cert_provider == ssl)
@@ -60,5 +60,5 @@
         privatekey_path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
         csr_path: "{{ etcd_cert_dir }}/etcd-ca.csr"
         provider: selfsigned
-      notify: ETCD | Set 'etcd_ca_changed' to true
+      register: etcd_ca
   when: cert_provider == 'ssl'
