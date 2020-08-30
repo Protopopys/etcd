@@ -7,10 +7,6 @@
   register: etcd_bin
   loop: "{{ etcd_bin_name }}"
 
-# Получаем информацию о сервисах на удаленной машине
-- name: ETCD | Get service facts
-  service_facts: {}
-
 # Создаем переменную install_etcd=true
 # Если:
 ## Бинарные файлы отсутствуют или
@@ -23,10 +19,6 @@
 
 - name: ETCD |(when install_etcd == TRUE)
   block:
-    # Получаем информацию о сервисах на удаленной машине
-    - name: ETCD | Get service facts
-      service_facts: {}
-
     # Создаем папки на удаленной машине
     - name: ETCD | Creating folders
       file:
@@ -89,7 +81,6 @@
         owner: root
         group: root
         mode: u+rwx
-      notify: ETCD | Ensure service is stopped
   when:
     - install_etcd|default(false)
     - use_downloader
@@ -107,15 +98,19 @@
     checksum: "{{ etcd[etcd_version].checksum_algorithm }}:{{ etcd[etcd_version].archive_checksum }}"
     owner: root
     group: root
-  notify: ETCD | Ensure service is stopped
   when:
     - install_etcd|default(false)
     - not use_downloader
     - etcd_archive.stat.checksum|default() != etcd[etcd_version].archive_checksum
 
-# Запускаем принудительное исполнение handlers
-- name: ETCD | Flush handlers
-  meta: flush_handlers
+# Останавливаем сервис
+- name: ETCD | Ensure service is stopped
+  service:
+    name: etcd
+    state: stopped
+  when:
+    - install_etcd|default(false)
+    - "'etcd.service' in services"
 
 # Распаковываем архив на удаленном сервере
 # Если:
@@ -124,8 +119,8 @@
   unarchive:
     src: "{{ distribution_path }}/{{ etcd[etcd_version].source_url | basename }}"
     dest: "{{ etcd_bin_path }}"
-    owner: root
-    group: root
+    owner: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"
     remote_src: true
     extra_opts: "{{ etcd[etcd_version].extra_opts }}"
   when: install_etcd|default(false)

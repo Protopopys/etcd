@@ -20,7 +20,3 @@
   register: etcd_ca
   loop: "{{ etcd_ca_certs.results }}"
   when: inventory_hostname != groups['etcd'][0]
-
-# Запускаем принудительное исполнение handlers
-- name: ETCD | Flush handlers
-  meta: flush_handlers

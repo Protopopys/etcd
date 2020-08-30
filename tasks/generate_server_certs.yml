@@ -11,7 +11,7 @@
     - name: ETCD | Check that ETCD Server cert exists
       stat:
         path: "{{ etcd_cert_dir }}/server-key.pem"
-      register: etcd_server_cert
+      register: _etcd_server_cert
 
     - name: ETCD | Generatting ETCD Server cert
       shell: >-
@@ -21,10 +21,10 @@
         -config={{ etcd_cert_dir }}/etcd-cfssl-config.json
         -profile=peer {{ etcd_cert_dir }}/etcd-server-csr.json | {{ cfssl_bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/server
       when:
-        - not etcd_server_cert.stat.exists or
+        - not _etcd_server_cert.stat.exists or
           etcd_server_conf.changed or
           etcd_ca.changed|default(false)
-      notify: ETCD | Restart etcd
+      register: etcd_server_cert
   when: cert_provider == 'cfssl'
 
 - name: ETCD |(when cert_provider == ssl)
@@ -44,7 +44,7 @@
         group: "{{ etcd_group }}"
         privatekey_path: "{{ etcd_cert_dir }}/server-key.pem"
         common_name: "{{ inventory_hostname }}"
-        subject_alt_name: "DNS:localhost,DNS:{{ inventory_hostname }},IP:127.0.0.1,IP:{{ advertise_ip | default(ansible_host) }}"
+        subject_alt_name: "DNS:localhost,DNS:{{ inventory_hostname }},IP:127.0.0.1,IP:{{ advertise_ip | default(ansible_default_ipv4.address) }}"
         key_usage_critical: true
         key_usage:
           - digitalSignature
@@ -60,5 +60,5 @@
         ownca_path: "{{ etcd_cert_dir }}/etcd-ca.pem"
         ownca_privatekey_path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
         provider: ownca
-      notify: ETCD | Restart etcd
+      register: etcd_server_cert
   when: cert_provider == 'ssl'

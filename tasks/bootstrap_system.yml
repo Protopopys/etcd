@@ -1,28 +1,66 @@
 ---
 # Определяем систему
 - name: ETCD | Loading platform variables
-  include_vars: "{{ ansible_os_family|lower }}.yml"
+  include_vars: "{{ ansible_distribution | lower }}.yml"
 
 - name: ETCD | Print interpreter version
   debug:
     msg: "Python version = {{ ansible_python_version }}"
 
-# Установка дополнительных пакетов
-- name: ETCD | Install the packages
-  package:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ etcd_required_packages.python2 }}"
+- name: ETCD | Install the packages (when ansible_python.version.major|int == 2)
+  block:
+    - name: ETCD | Install the packages
+      apt:
+        name: "{{ etcd_required_packages.python2 }}"
+        update_cache: true
+        state: present
+      when:
+        - ansible_distribution | lower in ['ubuntu','debian']
+
+    - name: ETCD | Install the packages
+      yum:
+        name: "{{ etcd_required_packages.python2 }}"
+        update_cache: true
+        state: present
+      when:
+        - ansible_distribution | lower in ['redhat','centos']
+
+    - name: ETCD | Install the packages
+      apt_rpm:
+        name: "{{ etcd_required_packages.python2 | join(', ') }}"
+        update_cache: true
+        state: present
+      when:
+        - ansible_distribution | lower in ['altlinux']
   when:
     - cert_provider == 'ssl'
     - ansible_python.version.major|int == 2
 
-# Установка дополнительных пакетов
-- name: ETCD | Install the packages
-  package:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ etcd_required_packages.python3 }}"
+- name: ETCD | Install the packages (when ansible_python.version.major|int == 3)
+  block:
+    - name: ETCD | Install the packages
+      apt:
+        name: "{{ etcd_required_packages.python3 }}"
+        update_cache: true
+        state: present
+      when:
+        - ansible_distribution | lower in ['ubuntu','debian']
+
+    - name: ETCD | Install the packages
+      yum:
+        name: "{{ etcd_required_packages.python3 }}"
+        update_cache: true
+        state: present
+      when:
+        - ansible_distribution | lower in ['redhat','centos']
+
+    - name: ETCD | Install the packages
+      apt_rpm:
+        name: "{{ etcd_required_packages.python3 | join(', ') }}"
+        update_cache: true
+        state: present
+      when:
+        - ansible_distribution | lower in ['altlinux']
   when:
     - cert_provider == 'ssl'
     - ansible_python.version.major|int == 3
@@ -50,4 +88,4 @@
     create_home: false
   when:
     - etcd_user != "root"
-    - etcd_manage_user|default(false)
+    - etcd_manage_group|default(false)

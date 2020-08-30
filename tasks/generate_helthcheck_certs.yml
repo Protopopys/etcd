@@ -5,7 +5,7 @@
       template:
         src: "etcd-healthcheck-client-csr.json.j2"
         dest: "{{ etcd_cert_dir }}/etcd-healthcheck-client-csr.json"
-        mode: 0644
+        mode: "0644"
       register: etcd_healthcheck_conf
 
     - name: ETCD | Check that ETCD Peer cert exists
@@ -59,5 +59,4 @@
         ownca_path: "{{ etcd_cert_dir }}/etcd-ca.pem"
         ownca_privatekey_path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
         provider: ownca
-      register: generated_etcd_server_certs
   when: cert_provider == 'ssl'

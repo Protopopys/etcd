@@ -5,13 +5,13 @@
       template:
         src: "etcd-peer-csr.json.j2"
         dest: "{{ etcd_cert_dir }}/etcd-peer-csr.json"
-        mode: 0644
+        mode: "0644"
       register: etcd_peer_conf
 
     - name: ETCD | Check that ETCD Peer cert exists
       stat:
         path: "{{ etcd_cert_dir }}/peer-key.pem"
-      register: etcd_peer_cert
+      register: _etcd_peer_cert
 
     - name: ETCD | Generatting ETCD Peer cert
       shell: >-
@@ -21,10 +21,10 @@
         -config={{ etcd_cert_dir }}/etcd-cfssl-config.json
         -profile=peer {{ etcd_cert_dir }}/etcd-peer-csr.json | {{ cfssl_bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/peer
       when:
-        - not etcd_peer_cert.stat.exists or
+        - not _etcd_peer_cert.stat.exists or
           etcd_peer_conf.changed or
           etcd_ca.changed|default(false)
-      notify: ETCD | Restart etcd
+      register: etcd_peer_cert
   when: cert_provider == 'cfssl'
 
 - name: ETCD |(when cert_provider == ssl)
@@ -44,7 +44,7 @@
         group: "{{ etcd_group }}"
         privatekey_path: "{{ etcd_cert_dir }}/peer-key.pem"
         common_name: "{{ inventory_hostname }}"
-        subject_alt_name: "DNS:localhost,DNS:{{ inventory_hostname }},IP:127.0.0.1,IP:{{ advertise_ip | default(ansible_host) }}"
+        subject_alt_name: "DNS:localhost,DNS:{{ inventory_hostname }},IP:127.0.0.1,IP:{{ advertise_ip | default(ansible_default_ipv4.address) }}"
         key_usage_critical: true
         key_usage:
           - digitalSignature
@@ -60,5 +60,5 @@
         ownca_path: "{{ etcd_cert_dir }}/etcd-ca.pem"
         ownca_privatekey_path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
         provider: ownca
-      notify: ETCD | Restart etcd
+      register: etcd_peer_cert
   when: cert_provider == 'ssl'

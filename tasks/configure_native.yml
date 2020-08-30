@@ -12,14 +12,6 @@
     - "{{ etcd_cert_dir }}"
     - "{{ etcd_data_dir }}"
 
-- name: ETCD | Copy ETCD CA signing config file
-  template:
-    src: "etcd-cfssl-config.json.j2"
-    dest: "{{ etcd_cert_dir }}/etcd-cfssl-config.json"
-    mode: "0644"
-  register: etcd_ca_sign_conf
-  when: "cert_provider == 'cfssl'"
-
 - name: ETCD | Generate ETCD CA certs
   import_tasks: "generate_ca_certs.yml"
   delegate_to: "{{ groups['etcd'][0] }}"
@@ -37,6 +29,32 @@
 - name: ETCD | Generate helthcheck certs
   import_tasks: "generate_helthcheck_certs.yml"
 
+- name: ETCD | Check if etcd cluster is healthy # noqa 306
+  shell: "{{ etcd_bin_path }}/etcdctl endpoint --cluster status && {{ etcd_bin_path }}/etcdctl endpoint --cluster health  2>&1 | grep -q -v 'Error: unhealthy cluster'"
+  register: etcd_cluster_is_healthy
+  failed_when: false
+  changed_when: false
+  check_mode: false
+  run_once: true
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/healthcheck-client.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/healthcheck-client-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/etcd-ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
+
+# Создаем конфигурационный файл systemd сервиса ETCD
+- name: ETCD | Creating etcd.service file
+  template:
+    src: "etcd_{{ etcd_distribution_type }}.service.j2"
+    dest: /etc/systemd/system/etcd.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: etcd_systemd_file
+
 # Создаем конфигурационный файл ETCD
 - name: ETCD | Creating etcd.env file
   template:
@@ -45,38 +63,79 @@
     owner: "{{ etcd_user }}"
     group: "{{ etcd_group }}"
     backup: true
-  notify: ETCD | Restart etcd
+  register: etcd_config_file
 
-# Создаем конфигурационный файл systemd сервиса ETCD
-- name: ETCD | Creating etcd.service file
-  template:
-    src: "etcd_{{ etcd_distribution_type }}.service.j2"
-    dest: /etc/systemd/system/etcd.service
-    owner: "{{ etcd_user }}"
-    group: "{{ etcd_group }}"
-    backup: true
-  notify:
-    - ETCD | Reload systemd
-    - ETCD | Restart etcd
-
-# Запускаем принудительное исполнение handlers
-- name: ETCD | Flush handlers
-  meta: flush_handlers
-
-- name: ETCD | Validating if the ETCD is UP and OPENED the PORT
-  wait_for:
-    host: "127.0.0.1"
-    port: 2379
-    delay: 3
-    sleep: 3
-    timeout: 15
-    state: started
-    msg: "WebServer PORT is not Listening"
+# Перезагружаем сервис
+- name: ETCD | Restart etcd
+  import_tasks: restart_native.yml
+  when:
+    - "'etcd.service' in services"
+    - etcd_config_file.changed or
+      etcd_systemd_file.changed or
+      etcd_peer_cert.changed or
+      etcd_server_cert.changed
 
 # Убеждаемся что ETCD сервис запущен и добавлен в автозапуск
 - name: ETCD | Ensure ETCD is started and enabled at boot
-  service:
-    name: etcd
-    state: started
-    enabled: true
-# TODO реализовать добавление и удаление членов кластера ETCD - https://etcd.io/docs/v3.4.0/op-guide/runtime-configuration/
+  import_tasks: start_native.yml
+  ignore_errors: "{{ etcd_cluster_is_healthy.rc == 0 }}"
+
+- name: ETCD | Wait for etcd cluster to be healthy # noqa 306
+  shell: "{{ etcd_bin_path }}/etcdctl endpoint --cluster status && {{ etcd_bin_path }}/etcdctl endpoint --cluster health  2>&1 | grep -q -v 'Error: unhealthy cluster'"
+  register: etcd_cluster_is_healthy
+  until: etcd_cluster_is_healthy.rc == 0
+  retries: "4"
+  delay: "3"
+  ignore_errors: false
+  changed_when: false
+  check_mode: false
+  run_once: true
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/healthcheck-client.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/healthcheck-client-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/etcd-ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
+
+# Создаем конфигурационный файл ETCD
+- name: ETCD | Creating etcd.env file
+  template:
+    src: "etcd.env.j2"
+    dest: "{{ etcd_conf_dir }}/etcd.env"
+    owner: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"
+    backup: true
+  register: etcd_config_file
+
+# Перезагружаем сервис
+- name: ETCD | Restart etcd
+  import_tasks: restart_native.yml
+  when: etcd_config_file.changed
+
+# Добавление нового члена кластера
+- name: ETCD | Check if member is in etcd cluster # noqa 306
+  shell: "{{ etcd_bin_path }}/etcdctl member list | grep -q {{ etcd_access_address }}"
+  register: etcd_member_in_cluster
+  ignore_errors: true
+  changed_when: false
+  check_mode: false
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/healthcheck-client.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/healthcheck-client-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/etcd-ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
+
+- meta: end_play
+
+- name: ETCD | Join member(s) to etcd cluster one at a time
+  include_tasks: join_etcd_member.yml
+  loop: "{{ groups[etcd_group_name] }}"
+  when:
+    - inventory_hostname == item
+    - etcd_member_in_cluster.rc != 0
+    - etcd_cluster_is_healthy.rc == 0

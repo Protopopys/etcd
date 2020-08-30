@@ -3,50 +3,69 @@ dependency:
   name: galaxy
 driver:
   name: docker
-lint:
-  name: yamllint
-platforms:
-  - name: instance1
-    groups:
-      - etcd
-    image: ${MOLECULE_DISTRO:-centos/systemd }
-    privileged: true
-    command: /sbin/init
-    security_opts:
-      - seccomp=unconfigured
-    capabilities:
-      - SYS_ADMIN
-    volume_mounts:
-      - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
-  - name: instance2
-    groups:
-      - etcd
-    image: ${MOLECULE_DISTRO:-centos/systemd }
-    privileged: true
-    command: /sbin/init
-    security_opts:
-      - seccomp=unconfigured
-    capabilities:
-      - SYS_ADMIN
-    volume_mounts:
-      - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
-  - name: instance3
-    groups:
-      - etcd
-    image: ${MOLECULE_DISTRO:-centos/systemd }
-    privileged: true
-    command: /sbin/init
-    security_opts:
-      - seccomp=unconfigured
-    capabilities:
-      - SYS_ADMIN
-    volume_mounts:
-      - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
-provisioner:
-  name: ansible
-  lint:
-    name: ansible-lint
+lint: |
+  set -e
+  yamllint .
+  ansible-lint
+
 verifier:
   name: testinfra
-  lint:
-    name: flake8
+
+platforms:
+  - name: instance1.etcd
+    groups:
+      - etcd
+    networks:
+      - name: etcd
+    image: protopopys/systemd-centos:7
+    override_command: False
+    tty: True
+    privileged: True
+    security_opts:
+      - seccomp=unconfigured
+    volumes:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+    tmpfs:
+      - /tmp
+      - /run/lock
+
+  - name: instance2.etcd
+    groups:
+      - etcd
+    networks:
+      - name: etcd
+    image: protopopys/systemd-centos:7
+    override_command: False
+    tty: True
+    privileged: True
+    security_opts:
+      - seccomp=unconfigured
+    volumes:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+    tmpfs:
+      - /tmp
+      - /run/lock
+
+  - name: instance3.etcd
+    groups:
+      - etcd
+    networks:
+      - name: etcd
+    image: protopopys/systemd-centos:7
+    override_command: False
+    tty: True
+    privileged: True
+    security_opts:
+      - seccomp=unconfigured
+    volumes:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+    tmpfs:
+      - /tmp
+      - /run/lock
+
+provisioner:
+  name: ansible
+  playbooks:
+    converge: ${MOLECULE_PLAYBOOK:-converge.yml}
+
+    #hostname: instance3.local
