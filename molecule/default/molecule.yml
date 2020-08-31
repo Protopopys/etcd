@@ -67,5 +67,3 @@ provisioner:
   name: ansible
   playbooks:
     converge: ${MOLECULE_PLAYBOOK:-converge.yml}
-
-    #hostname: instance3.local

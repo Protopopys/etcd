@@ -7,10 +7,14 @@
     owner: "{{ etcd_user }}"
     group: "{{ etcd_group }}"
     mode: u+rwx
+  when:
+    - "item is defined"
+    - "item | length > 0"
   loop:
     - "{{ etcd_conf_dir }}"
     - "{{ etcd_cert_dir }}"
     - "{{ etcd_data_dir }}"
+    - "{{ etcd_wal_dir }}"
 
 - name: ETCD | Generate ETCD CA certs
   import_tasks: "generate_ca_certs.yml"
