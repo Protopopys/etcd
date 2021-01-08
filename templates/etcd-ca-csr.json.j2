@@ -3,9 +3,9 @@
     "key": {
         "algo": "rsa",
         "size": 
-            {{ ca_certificates_key_size|default('4096') }}
+            {{ etcd_ca_certificates_key_size }}
     },
     "ca": {
-        "expiry": "{{ ca_certificates_duration|default('87600h') }}"
+        "expiry": "{{ etcd_ca_certificates_duration }}"
     }
 }

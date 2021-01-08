@@ -1,14 +1,18 @@
 ---
-# Определяем систему
 - name: ETCD | Loading platform variables
   include_vars: "{{ ansible_distribution | lower }}.yml"
-
-- name: ETCD | Print interpreter version
-  debug:
-    msg: "Python version = {{ ansible_python_version }}"
+  tags:
+    - facts
+    - python_modules
 
 - name: ETCD | Install the packages (when ansible_python.version.major|int == 2)
   block:
+    - name: ETCD | Print platform variables
+      debug:
+        msg: "Python modules = {{ etcd_required_packages.python2 }}"
+      tags:
+        - facts
+
     - name: ETCD | Install the packages
       apt:
         name: "{{ etcd_required_packages.python2 }}"
@@ -35,9 +39,17 @@
   when:
     - cert_provider == 'ssl'
     - ansible_python.version.major|int == 2
+  tags:
+    - python_modules
 
 - name: ETCD | Install the packages (when ansible_python.version.major|int == 3)
   block:
+    - name: ETCD | Print platform variables
+      debug:
+        msg: "Python modules = {{ etcd_required_packages.python3 }}"
+      tags:
+        - facts
+
     - name: ETCD | Install the packages
       apt:
         name: "{{ etcd_required_packages.python3 }}"
@@ -64,28 +76,5 @@
   when:
     - cert_provider == 'ssl'
     - ansible_python.version.major|int == 3
-
-# Создаем группу
-# Если:
-## Группа не root
-- name: ETCD | Create user group
-  group:
-    name: "{{ etcd_group }}"
-  when:
-    - etcd_group != "root"
-    - etcd_manage_user|default(false)
-
-# Создаем пользователя
-# Если:
-## Пользователь не root
-- name: ETCD | Create user
-  user:
-    name: "{{ etcd_user }}"
-    groups: "{{ etcd_group }}"
-    generate_ssh_key: "{{ etcd_ssh_key }}"
-    shell: "{{ etcd_shell }}"
-    system: "{{ etcd_system }}"
-    create_home: false
-  when:
-    - etcd_user != "root"
-    - etcd_manage_group|default(false)
+  tags:
+    - python_modules

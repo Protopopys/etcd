@@ -1,0 +1,33 @@
+---
+- name: ETCD | Add member to etcd cluster # noqa 305
+  shell: "{{ etcd_bin_path }}/etcdctl member add {{ etcd_member_name }} --peer-urls={{ etcd_initial_advertise_peer_urls }}"
+  register: member_add_result
+  changed_when: "'added to cluster' in member_add_result.stdout"
+  until: member_add_result.rc == 0
+  retries: "4"
+  delay: "3"
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_client_cert_file }}"
+    ETCDCTL_KEY: "{{ etcd_client_key_file }}"
+    ETCDCTL_CACERT: "{{ etcd_ca_cert_file }}"
+    ETCDCTL_ENDPOINTS: "{{ etcd_endpoints }}"
+
+- name: ETCD | Ensure member is in etcd cluster
+  shell: "set -o pipefail && {{ etcd_bin_path }}/etcdctl member list | grep -q {{ etcd_private_address }}"
+  args:
+    executable: /bin/bash
+  register: etcd_member_in_cluster
+  changed_when: false
+  check_mode: no
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_client_cert_file }}"
+    ETCDCTL_KEY: "{{ etcd_client_key_file }}"
+    ETCDCTL_CACERT: "{{ etcd_ca_cert_file }}"
+    ETCDCTL_ENDPOINTS: "{{ etcd_endpoints }}"
+
+- name: ETCD | Ensure ETCD is started and enabled at boot
+  import_tasks: starting.yml

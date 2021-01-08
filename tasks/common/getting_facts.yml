@@ -1,0 +1,20 @@
+---
+- name: ETCD | Getting information about system services on a remote machine
+  service_facts: {}
+  tags:
+    - facts
+    - ansible_service_facts
+
+- name: ETCD | Getting information about system on a remote machine
+  setup:
+    filter: ansible_*
+  tags:
+    - facts
+    - ansible_facts
+
+- name: ETCD | Print interpreter version
+  debug:
+    msg: "Python version = {{ ansible_python_version }}"
+  tags:
+    - facts
+    - ansible_facts

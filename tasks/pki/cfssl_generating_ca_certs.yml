@@ -1,0 +1,31 @@
+---
+- name: ETCD | Copy ETCD CA signing config file
+  template:
+    src: "etcd-cfssl-config.json.j2"
+    dest: "{{ etcd_cert_dir }}/etcd-cfssl-config.json"
+    mode: "0644"
+  # register: etcd_ca_sign_conf TODO
+
+- name: ETCD | Copy ETCD CA cert config files
+  template:
+    src: "etcd-ca-csr.json.j2"
+    dest: "{{ etcd_cert_dir }}/etcd-ca-csr.json"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0644"
+  register: etcd_ca_conf
+
+- name: ETCD | Check that ETCD CA cert exists
+  stat:
+    path: "{{ etcd_cert_dir }}/etcd-ca-key.pem"
+  register: etcd_ca_cert
+
+- name: ETCD | Generatting ETCD CA cert
+  shell: >-
+    {{ cfssl_bin_path }}/cfssl genkey
+    -initca {{ etcd_cert_dir }}/etcd-ca-csr.json | {{ cfssl_bin_path }}/cfssljson
+    -bare {{ etcd_cert_dir }}/etcd-ca
+  when:
+    - not etcd_ca_cert.stat.exists or
+      etcd_ca_conf.changed
+  register: etcd_ca

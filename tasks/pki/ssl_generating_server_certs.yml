@@ -1,0 +1,99 @@
+---
+- name: ETCD | Check that the public SERVER key exists on the host
+  stat:
+    path: "{{ etcd_server_cert_file }}"
+  register: _server_publickey
+  tags:
+    - server_facts
+    - facts
+
+- name: ETCD | Check that the private SERVER key exists on the host
+  stat:
+    path: "{{ etcd_server_key_file }}"
+  register: _server_privatekey
+  tags:
+    - server_facts
+    - facts
+
+- name: ETCD | Get information on generated SERVER certificate
+  openssl_certificate_info:
+    path: "{{ etcd_server_cert_file }}"
+    valid_at:
+      point: "+{{ etcd_ca_certificates_valid_at }}"
+  register: result_server_publickey
+  when: _server_publickey.stat.exists
+  tags:
+    - server_facts
+    - facts
+
+- name: ETCD | Get information on generated SERVER key
+  openssl_privatekey_info:
+    path: "{{ etcd_server_key_file }}"
+  register: result_server_privatekey
+  when: _server_privatekey.stat.exists
+  tags:
+    - server_facts
+    - facts
+
+- name: ETCD | Set 'generating_server_keys' to true
+  set_fact:
+    generating_server_keys: true
+  when:
+    - not result_server_publickey.valid_at.point|d(false) or
+      result_server_publickey.public_key|d('') != result_server_privatekey.public_key|d('') or
+      result_server_publickey.subject.commonName|d('') != etcd_server_common_name or
+      result_server_publickey.subject_alt_name|d('')|join(',') != etcd_server_subject_alt_name or
+      etcd_ca.changed|d(false)
+  tags:
+    - server_facts
+    - facts
+
+- name: ETCD | Print variable 'generating_server_keys'
+  debug:
+    msg: "Do I generate the SERVER ETCD keys? = {{ generating_server_keys|d(false) }}"
+  tags:
+    - server_facts
+    - facts
+
+- name: ETCD | Generate an OpenSSL private Server key
+  openssl_privatekey:
+    path: "{{ etcd_server_key_file }}"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    force: "{{ etcd_force_regenerate_server_privatekey }}"
+    type: RSA
+    size: "{{ etcd_certificates_key_size }}"
+
+- name: ETCD | Generate an OpenSSL Certificate Signing Request for Server certificate
+  openssl_csr:
+    path: "{{ etcd_cert_dir }}/server.csr"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    privatekey_path: "{{ etcd_server_key_file }}"
+    common_name: "{{ etcd_server_common_name }}"
+    subject_alt_name: "{{ etcd_server_subject_alt_name }}"
+    key_usage_critical: true
+    key_usage:
+      - digitalSignature
+      - keyEncipherment
+    extended_key_usage:
+      - clientAuth
+      - serverAuth
+
+- name: ETCD | Generate an OpenSSL Server certificate signed with your own CA certificate
+  openssl_certificate:
+    path: "{{ etcd_server_cert_file }}"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    csr_path: "{{ etcd_cert_dir }}/server.csr"
+    ownca_path: "{{ etcd_ca_cert_file }}"
+    ownca_privatekey_path: "{{ etcd_ca_key_file }}"
+    ownca_not_after: "+{{ etcd_certificates_duration }}"
+    provider: ownca
+  register: etcd_server_cert
+  when:
+    - etcd_force_regenerate_server_publickey or
+      generating_server_keys|d(false)

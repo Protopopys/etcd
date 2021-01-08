@@ -1,0 +1,99 @@
+---
+- name: ETCD | Check that the public PEER key exists on the host
+  stat:
+    path: "{{ etcd_peer_cert_file }}"
+  register: _peer_publickey
+  tags:
+    - peer_facts
+    - facts
+
+- name: ETCD | Check that the private PEER key exists on the host
+  stat:
+    path: "{{ etcd_peer_key_file }}"
+  register: _peer_privatekey
+  tags:
+    - peer_facts
+    - facts
+
+- name: ETCD | Get information on generated PEER certificate
+  openssl_certificate_info:
+    path: "{{ etcd_peer_cert_file }}"
+    valid_at:
+      point: "+{{ etcd_ca_certificates_valid_at }}"
+  register: result_peer_publickey
+  when: _peer_publickey.stat.exists
+  tags:
+    - peer_facts
+    - facts
+
+- name: ETCD | Get information on generated PEER key
+  openssl_privatekey_info:
+    path: "{{ etcd_peer_key_file }}"
+  register: result_peer_privatekey
+  when: _peer_privatekey.stat.exists
+  tags:
+    - peer_facts
+    - facts
+
+- name: ETCD | Set 'generating_peer_keys' to true
+  set_fact:
+    generating_peer_keys: true
+  when:
+    - not result_peer_publickey.valid_at.point|d(false) or
+      result_peer_publickey.public_key|d('') != result_peer_privatekey.public_key|d('') or
+      result_peer_publickey.subject.commonName|d('') != etcd_peer_common_name or
+      result_peer_publickey.subject_alt_name|d('')|join(',') != etcd_peer_subject_alt_name or
+      etcd_ca.changed|d(false)
+  tags:
+    - peer_facts
+    - facts
+
+- name: ETCD | Print variable 'generating_peer_keys'
+  debug:
+    msg: "Do I generate the PEER ETCD keys? = {{ generating_peer_keys|d(false) }}"
+  tags:
+    - peer_facts
+    - facts
+
+- name: ETCD | Generate an OpenSSL private Peer key
+  openssl_privatekey:
+    path: "{{ etcd_peer_key_file }}"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    force: "{{ etcd_force_regenerate_peer_privatekey }}"
+    type: RSA
+    size: "{{ etcd_certificates_key_size }}"
+
+- name: ETCD | Generate an OpenSSL Certificate Signing Request for Peer certificate
+  openssl_csr:
+    path: "{{ etcd_cert_dir }}/peer.csr"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    privatekey_path: "{{ etcd_peer_key_file }}"
+    common_name: "{{ etcd_peer_common_name }}"
+    subject_alt_name: "{{ etcd_peer_subject_alt_name }}"
+    key_usage_critical: true
+    key_usage:
+      - digitalSignature
+      - keyEncipherment
+    extended_key_usage:
+      - clientAuth
+      - serverAuth
+
+- name: ETCD | Generate an OpenSSL Peer certificate signed with your own CA certificate
+  openssl_certificate:
+    path: "{{ etcd_peer_cert_file }}"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    csr_path: "{{ etcd_cert_dir }}/peer.csr"
+    ownca_path: "{{ etcd_ca_cert_file }}"
+    ownca_privatekey_path: "{{ etcd_ca_key_file }}"
+    ownca_not_after: "+{{ etcd_certificates_duration }}"
+    provider: ownca
+  register: etcd_peer_cert
+  when:
+    - etcd_force_regenerate_peer_publickey or
+      generating_peer_keys|d(false)

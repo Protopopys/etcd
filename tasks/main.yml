@@ -1,23 +1,25 @@
 ---
-# Получаем информацию о сервисах на удаленной машине
-- name: ETCD | Get service facts
-  service_facts: {}
-
-- name: ETCD | Importing bootstrap os task
-  import_tasks: "bootstrap_system.yml"
+- name: ETCD | Importing common task - "Getting facts"
+  import_tasks: "common/getting_facts.yml"
   tags:
-    - bootstrap
-    - install
-    - configure
+    - facts_task
 
-# Импортируем задание развертывания в зависимости от указанного типа (native или container)
+- name: ETCD | Importing common task - "Creating system user"
+  import_tasks: "common/creating_system_user.yml"
+  tags:
+    - system_user_task
+
+- name: ETCD | Importing common task - "Installing python modules"
+  import_tasks: "common/installing_python_modules.yml"
+  tags:
+    - python_modules_task
+
 - name: ETCD | Importing ETCD installation task
-  import_tasks: "install_{{ etcd_distribution_type }}.yml"
+  include_tasks: "{{ etcd_distribution_type }}/installing.yml"
   tags:
-    - install
+    - install_task
 
-# Импортируем задание конфигурирования в зависимости от указанного типа (native или container)
 - name: ETCD | Importing ETCD configuration task
-  import_tasks: "configure_{{ etcd_distribution_type }}.yml"
+  include_tasks: "{{ etcd_distribution_type }}/configuring.yml"
   tags:
-    - configure
+    - configure_task

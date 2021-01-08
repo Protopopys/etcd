@@ -1,0 +1,213 @@
+---
+# True - Downloading to the control node then copy to the remote machines
+# False - Downloading to the remote machines directly
+use_downloader: true
+
+# Path to the directory on control node with archive to install
+downloader_source_folder: ~/DISTR
+
+# Path to the directory with archive to install
+distribution_path: "/opt/DISTR"
+
+# The ETCD cluster version
+etcd_version: v3.4.14
+
+# Path to the binary files directory
+etcd_bin_path: /usr/local/bin
+cfssl_bin_path: /usr/local/bin
+
+# Binary names
+etcd_bin_name:
+  - etcd
+  - etcdctl
+
+# Installation type:
+## native - binary(systemd) 
+## container - container(container runtime interface)
+etcd_distribution_type: native
+
+#
+#cert_provider: cfssl
+cert_provider: ssl
+
+# System user parameters
+etcd_manage_user: true
+etcd_manage_group: true
+etcd_user_name: etcd
+etcd_user_group: etcd
+etcd_user_system: true
+etcd_user_home: false
+etcd_user_shell: /bin/false
+etcd_user_ssh_key: false
+
+# Group name for the ETCD cluster (ansible inventory group)
+etcd_group_name: "etcd"
+# Path to the configuration files directory
+etcd_conf_dir: /etc/etcd
+# Path to the tls keys directory
+etcd_cert_dir: "{{ etcd_conf_dir }}/pki"
+#
+etcd_endpoints: "\
+  {% for item in groups[etcd_group_name] %}\
+    https://{{ hostvars[item].etcd_public_address | d(hostvars[item].advertise_ip) | d(hostvars[item].ansible_default_ipv4.address) }}:2379{% if not loop.last %},{% endif %}\
+  {% endfor %}"
+
+### Configuration flags ###
+
+## Member flags ##
+# Human-readable name for this member
+etcd_member_name: "\
+  {% for host in groups[etcd_group_name] %}\
+    {% if inventory_hostname == host %}\
+      {{ hostvars[host].etcd_member_name | d('etcd' + loop.index|string) }}\
+    {% endif %}\
+  {% endfor %}"
+
+# Path to the data directory
+etcd_data_dir: /var/lib/etcd
+
+# Path to the dedicated wal directory. If this flag is set, etcd will write the WAL files to the walDir rather than the dataDir.
+# This allows a dedicated disk to be used, and helps avoid io competition between logging and other IO operations.
+etcd_wal_dir: ""
+
+# Number of committed transactions to trigger a snapshot to disk
+etcd_snapshot_count: "10000"
+
+# Time (in milliseconds) of a heartbeat interval
+etcd_heartbeat_interval: "250"
+
+# Time (in milliseconds) for an election to timeout. See Documentation/tuning.md for details
+etcd_election_timeout: "5000"
+
+# List of URLs to listen on for peer traffic.
+# This flag tells the etcd to accept incoming requests from its peers on the specified scheme://IP:port combinations.
+# Scheme can be http or https.
+# Alternatively, use unix://<file-path> or unixs://<file-path> for unix sockets.
+# If 0.0.0.0 is specified as the IP, etcd listens to the given port on all interfaces.
+# If an IP address is given as well as a port, etcd will listen on the given port and interface.
+# Multiple URLs may be used to specify a number of addresses and ports to listen on.
+# The etcd will respond to requests from any of the listed addresses and ports.
+etcd_listen_peer_urls: "https://{{ etcd_private_address }}:2380"
+
+# List of URLs to listen on for client traffic.
+# This flag tells the etcd to accept incoming requests from the clients on the specified scheme://IP:port combinations.
+# Scheme can be either http or https.
+# Alternatively, use unix://<file-path> or unixs://<file-path> for unix sockets.
+# If 0.0.0.0 is specified as the IP, etcd listens to the given port on all interfaces.
+# If an IP address is given as well as a port, etcd will listen on the given port and interface.
+# Multiple URLs may be used to specify a number of addresses and ports to listen on.
+# The etcd will respond to requests from any of the listed addresses and ports.
+etcd_listen_client_urls: "https://0.0.0.0:2379"
+
+# Maximum number of snapshot files to retain (0 is unlimited)
+etcd_max_snapshots: 5
+
+# Maximum number of wal files to retain (0 is unlimited)
+etcd_max_wals: 5
+
+# Comma-separated white list of origins for CORS (cross-origin resource sharing).
+etcd_cors: ""
+
+# Raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
+etcd_quota_backend_bytes: 0
+
+# BackendBatchLimit is the maximum operations before commit the backend transaction.
+etcd_backend_batch_limit: 0
+
+# The freelist type that etcd backend(bboltdb) uses (array and map are supported types).
+etcd_backend_bbolt_freelist_type: map
+
+# BackendBatchInterval is the maximum time before commit the backend transaction.
+etcd_backend_batch_interval: 0
+
+# Maximum number of operations permitted in a transaction.
+etcd_max_txn_ops: 128
+
+# Maximum client request size in bytes the server will accept.
+etcd_max_request_bytes: 1572864
+
+# Minimum duration interval that a client should wait before pinging server.
+etcd_grpc_keepalive_min_time: 5s
+
+# Frequency duration of server-to-client ping to check if a connection is alive (0 to disable).
+etcd_grpc_keepalive_interval: 2h
+
+# Additional duration of wait before closing a non-responsive connection (0 to disable).
+etcd_grpc_keepalive_timeout: 20s
+
+
+## Clustering flags ##
+etcd_public_address: "{{ advertise_ip | d(ansible_default_ipv4.address) }}"
+etcd_private_address: "{{ advertise_ip | d(ansible_default_ipv4.address) }}"
+
+# List of this member’s peer URLs to advertise to the rest of the cluster.
+# These addresses are used for communicating etcd data around the cluster.
+# At least one must be routable to all cluster members.
+# These URLs can contain domain names.
+etcd_initial_advertise_peer_urls: "https://{{ etcd_private_address }}:2380"
+
+# Initial cluster configuration for bootstrapping.
+etcd_initial_cluster: "\
+{% for item in groups[etcd_group_name] %}\
+  {{ hostvars[item].etcd_member_name | d('etcd' + loop.index|string) }}=https://{{ hostvars[item].etcd_private_address | d(hostvars[item].advertise_ip) | d(hostvars[item].ansible_default_ipv4.address) }}:2380{% if not loop.last %},{% endif %}\
+{% endfor %}"
+
+# Initial cluster state (“new” or “existing”).
+# Set to new for all members present during initial static or DNS bootstrapping.
+# If this option is set to existing, etcd will attempt to join the existing cluster.
+# If the wrong value is set, etcd will attempt to start but fail safely.
+etcd_initial_cluster_state: "{% if etcd_cluster_is_healthy.rc == 0 | bool %}existing{% else %}new{% endif %}"
+
+# Initial cluster token for the etcd cluster during bootstrap.
+etcd_initial_cluster_token: k8s_etcd
+
+# List of this member’s client URLs to advertise to the rest of the cluster.
+# These URLs can contain domain names.
+etcd_advertise_client_urls: "https://{{ etcd_public_address }}:2379"
+
+# Reject reconfiguration requests that would cause quorum loss.
+etcd_strict_reconfig_check: true
+
+# Auto compaction retention for mvcc key value store in hour. 
+# 0 means disable auto compaction.
+etcd_auto_compaction_retention: 0
+
+# Interpret ‘auto-compaction-retention’ one of: ‘periodic’, ‘revision’. ‘periodic’ for duration based retention, defaulting to hours if no time unit is provided (e.g. ‘5m’).
+# ‘revision’ for revision number based retention.
+etcd_auto_compaction_mode: periodic
+
+# Accept etcd V2 client requests
+etcd_enable_v2: false
+
+
+## Proxy flags ##
+# Proxy mode setting (“off”, “readonly” or “on”).
+etcd_proxy: "off"
+
+
+## Logging flags ##
+# Specify ‘stdout’ or ‘stderr’ to skip journald logging even when running under systemd, or list of comma separated output targets.
+# ‘default’ use ‘stderr’ config for v3.4 during zap logger migraion
+etcd_log_outputs: default
+
+# Configures log level. Only supports debug, info, warn, error, panic, or fatal.
+etcd_log_level: info
+
+
+## Profiling flags ##
+# Enable runtime profiling data via HTTP server. Address is at client URL + “/debug/pprof/”
+etcd_enable_pprof: false
+
+# Set level of detail for exported metrics, specify ‘extensive’ to include server side grpc histogram metrics.
+etcd_metrics: "basic"
+
+# List of additional URLs to listen on that will respond to both the /metrics and /health endpoints
+# Uncomment to set a separate port for etcd to expose metrics on
+# etcd_listen_metrics_urls: "http://{{ advertise_ip | d(ansible_default_ipv4.address) }}:2381,http://127.0.0.1:2381"
+
+
+## A dictionary of extra environment variables to add to etcd.env, formatted like:
+##  etcd_extra_vars:
+##    ETCD_VAR1: "value1"
+##    ETCD_VAR2: "value2"
+etcd_extra_vars: {}

@@ -1,0 +1,95 @@
+---
+- name: ETCD | Check that the public healthcheck key exists on the host
+  stat:
+    path: "{{ etcd_client_cert_file }}"
+  register: _healthcheck_publickey
+  tags:
+    - client_facts
+    - facts
+
+- name: ETCD | Check that the private healthcheck key exists on the host
+  stat:
+    path: "{{ etcd_client_key_file }}"
+  register: _healthcheck_privatekey
+  tags:
+    - client_facts
+    - facts
+
+- name: ETCD | Get information on generated healthcheck certificate
+  openssl_certificate_info:
+    path: "{{ etcd_client_cert_file }}"
+    valid_at:
+      point: "+{{ etcd_certificates_valid_at }}"
+  register: result_healthcheck_publickey
+  when: _healthcheck_publickey.stat.exists
+  tags:
+    - client_facts
+    - facts
+
+- name: ETCD | Get information on generated healthcheck key
+  openssl_privatekey_info:
+    path: "{{ etcd_client_key_file }}"
+  register: result_healthcheck_privatekey
+  when: _healthcheck_privatekey.stat.exists
+  tags:
+    - client_facts
+    - facts
+
+- name: ETCD | Set 'generating_client_keys' to true
+  set_fact:
+    generating_client_keys: true
+  when:
+    - not result_healthcheck_publickey.valid_at.point|d(false) or
+      result_healthcheck_publickey.public_key|d('') != result_healthcheck_privatekey.public_key|d('') or
+      result_healthcheck_publickey.subject.commonName|d('') != etcd_client_common_name
+  tags:
+    - client_facts
+    - facts
+
+- name: ETCD | Print variable 'generating_client_keys'
+  debug:
+    msg: "Do I generate the Client ETCD keys? = {{ generating_client_keys|d(false) }}"
+  tags:
+    - client_facts
+    - facts
+
+- name: ETCD | Generate an OpenSSL private healthcheck key
+  openssl_privatekey:
+    path: "{{ etcd_client_key_file }}"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    force: "{{ etcd_force_regenerate_client_privatekey }}"
+    type: RSA
+    size: "{{ etcd_certificates_key_size }}"
+
+- name: ETCD | Generate an OpenSSL Certificate Signing Request fot healthcheck certificate
+  openssl_csr:
+    path: "{{ etcd_cert_dir }}/healthcheck-client.csr"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    privatekey_path: "{{ etcd_client_key_file }}"
+    common_name: "{{ etcd_client_common_name }}"
+    use_common_name_for_san: false
+    key_usage_critical: true
+    key_usage:
+      - digitalSignature
+      - keyEncipherment
+    extended_key_usage:
+      - clientAuth
+
+- name: ETCD | Generate an OpenSSL healthcheck certificate signed with your own CA certificate
+  openssl_certificate:
+    path: "{{ etcd_client_cert_file }}"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    csr_path: "{{ etcd_cert_dir }}/healthcheck-client.csr"
+    ownca_path: "{{ etcd_ca_cert_file }}"
+    ownca_privatekey_path: "{{ etcd_ca_key_file }}"
+    ownca_not_after: "+{{ etcd_certificates_duration }}"
+    provider: ownca
+  when:
+    - etcd_force_regenerate_client_publickey or
+      generating_client_keys|d(false)

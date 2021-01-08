@@ -2,11 +2,11 @@
     "signing": {
         "default": {
             "usages": ["signing", "key encipherment", "server auth", "client auth"],
-            "expiry": "{{ certificates_duration }}"
+            "expiry": "{{ etcd_certificates_duration }}"
         },
         "profiles": {
             "server": {
-                "expiry": "{{ certificates_duration }}",
+                "expiry": "{{ etcd_certificates_duration }}",
                 "usages": [
                     "signing",
                     "digital signature",
@@ -15,7 +15,7 @@
                 ]
             },
             "client": {
-                "expiry": "{{ certificates_duration }}",
+                "expiry": "{{ etcd_certificates_duration }}",
                 "usages": [
                     "signing",
                     "digital signature",
@@ -24,7 +24,7 @@
                 ] 
             },
             "peer": {
-                "expiry": "{{ certificates_duration }}",
+                "expiry": "{{ etcd_certificates_duration }}",
                 "usages": [
                     "signing",
                     "digital signature",

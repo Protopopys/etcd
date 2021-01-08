@@ -1,0 +1,89 @@
+---
+## Security flags ##
+# Force regenerate CA ETCD certificates
+etcd_force_regenerate_ca_privatekey: false
+etcd_force_regenerate_ca_publickey: false
+
+etcd_force_regenerate_client_privatekey: false
+etcd_force_regenerate_client_publickey: false
+
+etcd_force_regenerate_peer_privatekey: false
+etcd_force_regenerate_peer_publickey: false
+
+etcd_force_regenerate_server_privatekey: false
+etcd_force_regenerate_server_publickey: false
+
+etcd_ca_certificates_key_size: 4096
+etcd_certificates_key_size: 2048
+# Valid format is [+-]timespec | ASN.1 TIME where timespec can be an integer + [w | d | h | m | s] (e.g. +32w1d2h.
+etcd_ca_certificates_duration: 3650d
+# Valid format is [+-]timespec | ASN.1 TIME where timespec can be an integer + [w | d | h | m | s] (e.g. +32w1d2h.
+etcd_ca_certificates_valid_at: 7d
+# Valid format is [+-]timespec | ASN.1 TIME where timespec can be an integer + [w | d | h | m | s] (e.g. +32w1d2h.
+etcd_certificates_duration: 1095d
+# Valid format is [+-]timespec | ASN.1 TIME where timespec can be an integer + [w | d | h | m | s] (e.g. +32w1d2h.
+etcd_certificates_valid_at: 7d
+
+# Default CN
+etcd_ca_common_name: etcd-ca
+
+# Client TLS using generated certificates
+etcd_auto_tls: false
+
+# Comma-separated list of supported TLS cipher suites between server/client and peers.
+etcd_cipher_suites: ""
+
+### CA ###
+# Path to the client server TLS trusted CA cert file.
+etcd_ca_cert_file: "{{ etcd_cert_dir }}/ca.crt"
+# Path to the client server TLS trusted CA key file.
+etcd_ca_key_file: "{{ etcd_cert_dir }}/ca.key"
+# Path to the client server TLS trusted CA cert file.
+etcd_trusted_ca_file: "{{ etcd_ca_cert_file }}"
+
+
+### Server ###
+etcd_server_common_name: "{{ inventory_hostname }}"
+etcd_server_subject_alt_name: "DNS:{{ inventory_hostname }},IP:{{ etcd_private_address }},DNS:localhost,IP:127.0.0.1"
+# Path to the client server TLS cert file.
+etcd_server_cert_file: "{{ etcd_cert_dir }}/server.crt"
+# Path to the client server TLS key file.
+etcd_server_key_file: "{{ etcd_cert_dir }}/server.key"
+
+
+### Peer ###
+etcd_peer_common_name: "{{ inventory_hostname }}"
+etcd_peer_subject_alt_name: "DNS:{{ inventory_hostname }},IP:{{ etcd_private_address }},DNS:localhost,IP:127.0.0.1"
+# Path to the peer server TLS cert file.
+# This is the cert for peer-to-peer traffic, used both for server and client.
+etcd_peer_cert_file: "{{ etcd_cert_dir }}/peer.crt"
+# Path to the peer server TLS key file.
+# This is the key for peer-to-peer traffic, used both for server and client.
+etcd_peer_key_file: "{{ etcd_cert_dir }}/peer.key"
+# Enable peer client cert authentication.
+etcd_peer_client_cert_auth: true
+# Path to the peer certificate revocation list file.
+etcd_peer_crl_file: ""
+# Peer TLS using generated certificates
+etcd_peer_auto_tls: false
+# Allowed CommonName for inter peer authentication.
+etcd_peer_cert_allowed_cn: ""
+# Allowed TLS certificate name for inter peer authentication.
+etcd_peer_cert_allowed_hostname: ""
+# Path to the peer server TLS trusted CA file.
+etcd_peer_trusted_ca_file: "{{ etcd_ca_cert_file }}"
+
+
+### Client ###
+# Default CN
+etcd_client_common_name: kube-etcd-healthcheck-client
+# Path to the client TLS cert file.
+etcd_client_cert_file: "{{ etcd_cert_dir }}/healthcheck-client.crt"
+# Path to the client TLS key file.
+etcd_client_key_file: "{{ etcd_cert_dir }}/healthcheck-client.key"
+# Enable client cert authentication.
+etcd_client_cert_auth: true
+# Path to the client certificate revocation list file.
+etcd_client_crl_file: ""
+# Allowed TLS name for client cert authentication.
+etcd_client_cert_allowed_hostname: ""

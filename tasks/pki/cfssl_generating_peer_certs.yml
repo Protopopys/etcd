@@ -1,0 +1,25 @@
+---
+- name: ETCD | Copy ETCD Peer cert config files
+  template:
+    src: "etcd-peer-csr.json.j2"
+    dest: "{{ etcd_cert_dir }}/etcd-peer-csr.json"
+    mode: "0644"
+  register: etcd_peer_conf
+
+- name: ETCD | Check that ETCD Peer cert exists
+  stat:
+    path: "{{ etcd_cert_dir }}/peer-key.pem"
+  register: _etcd_peer_cert
+
+- name: ETCD | Generatting ETCD Peer cert
+  shell: >-
+    {{ cfssl_bin_path }}/cfssl gencert
+    -ca={{ etcd_cert_dir }}/etcd-ca.pem
+    -ca-key={{ etcd_cert_dir }}/etcd-ca-key.pem
+    -config={{ etcd_cert_dir }}/etcd-cfssl-config.json
+    -profile=peer {{ etcd_cert_dir }}/etcd-peer-csr.json | {{ cfssl_bin_path }}/cfssljson -bare {{ etcd_cert_dir }}/peer
+  when:
+    - not _etcd_peer_cert.stat.exists or
+      etcd_peer_conf.changed or
+      etcd_ca.changed|default(false)
+  register: etcd_peer_cert

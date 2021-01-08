@@ -2,6 +2,6 @@
 - name: Converge
   hosts: all
   tasks:
-    - name: "Include ansible-etcd"
+    - name: "Include etcd role"
       include_role:
-        name: "ansible-etcd"
+        name: "etcd"

@@ -1,0 +1,96 @@
+---
+- name: ETCD | Check that the public CA key exists on the host
+  stat:
+    path: "{{ etcd_ca_cert_file }}"
+  register: _ca_publickey
+  tags:
+    - ca_facts
+    - facts
+
+- name: ETCD | Check that the private CA key exists on the host
+  stat:
+    path: "{{ etcd_ca_key_file }}"
+  register: _ca_privatekey
+  tags:
+    - ca_facts
+    - facts
+
+- name: ETCD | Get information on generated CA certificate
+  openssl_certificate_info:
+    path: "{{ etcd_ca_cert_file }}"
+    valid_at:
+      point: "+{{ etcd_ca_certificates_valid_at }}"
+  register: result_ca_publickey
+  when: _ca_publickey.stat.exists
+  tags:
+    - ca_facts
+    - facts
+
+- name: ETCD | Get information on generated CA key
+  openssl_privatekey_info:
+    path: "{{ etcd_ca_key_file }}"
+  register: result_ca_privatekey
+  when: _ca_privatekey.stat.exists
+  tags:
+    - ca_facts
+    - facts
+
+- name: ETCD | Set 'generating_ca_keys' to true
+  set_fact:
+    generating_ca_keys: true
+  when:
+    - not result_ca_publickey.valid_at.point|d(false) or
+      result_ca_publickey.public_key|d('') != result_ca_privatekey.public_key|d('') or
+      result_ca_publickey.subject.commonName|d('') != etcd_ca_common_name
+  tags:
+    - ca_facts
+    - facts
+
+- name: ETCD | Print variable 'generating_ca_keys'
+  debug:
+    msg: "Do I generate the CA ETCD keys? = {{ generating_ca_keys|d(false) }}"
+  tags:
+    - ca_facts
+    - facts
+
+- name: ETCD | Generate an OpenSSL private CA key
+  openssl_privatekey:
+    path: "{{ etcd_ca_key_file }}"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    force: "{{ etcd_force_regenerate_ca_privatekey }}"
+    type: RSA
+    size: "{{ etcd_ca_certificates_key_size }}"
+
+- name: ETCD | Generate an OpenSSL Certificate Signing Request for CA certificate
+  openssl_csr:
+    path: "{{ etcd_cert_dir }}/ca.csr"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    privatekey_path: "{{ etcd_ca_key_file }}"
+    common_name: "{{ etcd_ca_common_name }}"
+    use_common_name_for_san: false
+    basic_constraints_critical: true
+    basic_constraints: "CA:TRUE"
+    key_usage_critical: true
+    key_usage:
+      - digitalSignature
+      - keyEncipherment
+      - keyCertSign
+
+- name: ETCD | Generate a Self Signed OpenSSL CA certificate
+  openssl_certificate:
+    path: "{{ etcd_ca_cert_file }}"
+    owner: "{{ etcd_user_name }}"
+    group: "{{ etcd_user_group }}"
+    mode: "0600"
+    privatekey_path: "{{ etcd_ca_key_file }}"
+    csr_path: "{{ etcd_cert_dir }}/ca.csr"
+    provider: selfsigned
+    selfsigned_not_after: "+{{ etcd_ca_certificates_duration }}"
+  when:
+    - etcd_force_regenerate_ca_publickey or
+      generating_ca_keys|d(false)
+  register: etcd_ca

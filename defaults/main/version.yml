@@ -1,0 +1,63 @@
+---
+# ETCD available version
+etcd:
+  v3.3.17:
+    source_url: https://github.com/etcd-io/etcd/releases/download/v3.3.17/etcd-v3.3.17-linux-amd64.tar.gz
+    # Контрольная сумма скачаемого архива
+    checksum_algorithm: "sha256"
+    archive_checksum: 8c1168a24d17a2d6772f8148ea35d4f3398c51f1e23db90c849d506adb387060
+    # Контрольная сумма бинарных файлов
+    etcd:
+      checksum: bcaeca5a37668909ec9c6f3144cbdecf9e9ae308d6f3d2b0114d1ce79a890f26
+    etcdctl:
+      checksum: dd0ac971beefb8bc2b655b78851b08a9a5b717ca87ca20540237c4d17fa385d0
+      # Параметр распаковки архива на удаленном сервере
+    extra_opts: --strip-components=1
+  v3.4.3:
+    source_url: https://github.com/etcd-io/etcd/releases/download/v3.4.3/etcd-v3.4.3-linux-amd64.tar.gz
+    # Контрольная сумма скачаемого архива
+    checksum_algorithm: "sha256"
+    archive_checksum: 6c642b723a86941b99753dff6c00b26d3b033209b15ee33325dc8e7f4cd68f07
+    # Контрольная сумма бинарных файлов
+    etcd:
+      checksum: f0fc58ad6e4857ddbc42f97fff42ddcfad9b63e1d3a39d47c56f17d7786c60ac
+    etcdctl:
+      checksum: 7bf7dd410c6b69d3cfacd8b8aed2d9e0133dcc97959a41d2c347fc5f5df6c387
+    # Параметр распаковки архива на удаленном сервере
+    extra_opts: --strip-components=1
+  v3.4.7:
+    source_url: https://github.com/etcd-io/etcd/releases/download/v3.4.7/etcd-v3.4.7-linux-amd64.tar.gz
+    # Контрольная сумма скачаемого архива
+    checksum_algorithm: "sha256"
+    archive_checksum: 4ad86e663b63feb4855e1f3a647e719d6d79cf6306410c52b7f280fa56f8eb6b
+    # Контрольная сумма бинарных файлов
+    etcd:
+      checksum: ed5555ac2ad1d98e65f26035ec1e14bd5bc984f69a0f4ee45051f86af0e9f64c
+    etcdctl:
+      checksum: 42042b008b41ffa4772fc3bdae42c5e32b52e4864d9551798a26a76a30cdc669
+    # Параметр распаковки архива на удаленном сервере
+    extra_opts: --strip-components=1
+  v3.4.13:
+    source_url: https://github.com/etcd-io/etcd/releases/download/v3.4.13/etcd-v3.4.13-linux-amd64.tar.gz
+    # Контрольная сумма скачаемого архива
+    checksum_algorithm: "sha256"
+    archive_checksum: 2ac029e47bab752dacdb7b30032f230f49e2f457cbc32e8f555c2210bb5ff107
+    # Контрольная сумма бинарных файлов
+    etcd:
+      checksum: feec3a5b08e89e8c533b6d3f9146bdc479312d3eae056c0d7e56f2d36f771b4a
+    etcdctl:
+      checksum: a8f59467f6e33817771e59fdb715d42f68f54348eae53c4bb5561c0d40fd9650
+    # Параметр распаковки архива на удаленном сервере
+    extra_opts: --strip-components=1
+  v3.4.14:
+    source_url: https://github.com/etcd-io/etcd/releases/download/v3.4.14/etcd-v3.4.14-linux-amd64.tar.gz
+    # Контрольная сумма скачаемого архива
+    checksum_algorithm: "sha256"
+    archive_checksum: f57141d45ceb727a84e2f0bcd0b98934ea2ad2b59009be90d901710861601651
+    # Контрольная сумма бинарных файлов
+    etcd:
+      checksum: 9d8162c9846f9545785c120e128d3345b591e52ded1c78c534b42ef15b5bc4fc
+    etcdctl:
+      checksum: 7df998d6b31227bdb8cade91db4fce9b6cc64637b7cbd80cf5bbd9c408ec3372
+    # Параметр распаковки архива на удаленном сервере
+    extra_opts: --strip-components=1

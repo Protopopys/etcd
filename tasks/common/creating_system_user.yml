@@ -1,0 +1,21 @@
+---
+- name: ETCD | Create user group
+  group:
+    name: "{{ etcd_user_group }}"
+  when:
+    - etcd_manage_group
+    - "etcd_user_group != 'root'"
+  tags: system_group
+
+- name: ETCD | Create user
+  user:
+    name: "{{ etcd_user_name }}"
+    groups: "{{ etcd_user_group }}"
+    generate_ssh_key: "{{ etcd_user_ssh_key }}"
+    shell: "{{ etcd_user_shell }}"
+    system: "{{ etcd_user_system }}"
+    create_home: "{{ etcd_user_home }}"
+  when:
+    - etcd_manage_user
+    - "etcd_user_name != 'root'"
+  tags: system_user

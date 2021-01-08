@@ -1,5 +1,4 @@
 ---
-# Запускаем сервис
 - name: ETCD | Start etcd
   systemd:
     name: etcd
@@ -8,11 +7,11 @@
 
 - name: ETCD | Wait for etcd up
   uri:
-    url: "https://{{ etcd_address }}:2379/health"
+    url: "https://{{ etcd_public_address }}:2379/health"
     validate_certs: no
-    client_cert: "{{ etcd_cert_dir }}/healthcheck-client.pem"
-    client_key: "{{ etcd_cert_dir }}/healthcheck-client-key.pem"
+    client_cert: "{{ etcd_client_cert_file }}"
+    client_key: "{{ etcd_client_key_file }}"
   register: result
   until: result.status is defined and result.status == 200
-  retries: 60
+  retries: 30
   delay: 1
